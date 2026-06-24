@@ -1,0 +1,14 @@
+{
+  "name": "@archmap/resolve",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "resolve.js",
+  "bin": { "archmap-resolve": "resolve.mjs" },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "@archmap/schema": "*",
+    "web-tree-sitter": "0.25.0",
+    "tree-sitter-javascript": "0.25.0",
+    "tree-sitter-typescript": "0.23.2"
+  }
+}

@@ -48,5 +48,16 @@ rm -rf "$HOME/.nvm"
 Because there are no third-party runtime deps, `node_modules` holds only workspace
 symlinks — deleting it is safe and instantly reversible with `npm install`.
 
+## Grounding resolver (Phase 2)
+
+`@archmap/resolve` checks that each grounded leaf still points at a real symbol and reports drift (spec §9). JS/TS only, via web-tree-sitter (WASM, no native build).
+
+```bash
+node packages/resolve/resolve.mjs model.json            # check: report drift, exit 1 on MISSING/AMBIGUOUS
+node packages/resolve/resolve.mjs model.json --write     # establish baselines + write derived resolved/lines
+```
+
+A green check means the **boxes** are honest (the symbols exist and are unchanged) — never that the **map** is. Edge truth (do the relationships in `edges` actually exist) is out of scope here (spec §§10–11).
+
 See `spec.md` for the full design. Phase 1 = schema + validate + render.
 Grounding resolver (`packages/resolve`) is Phase 2.

@@ -26,3 +26,56 @@ test("cycle does not hang and terminates", () => {
   assert.ok(Number.isFinite(layerOf.get("a")));
   assert.ok(Number.isFinite(layerOf.get("b")));
 });
+
+import { boxWidth, layoutView } from "../layout.js";
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+
+const m = {
+  meta: { name: "x", version: "1", snapshot: "s" },
+  nodes: [
+    { id: "sys", name: "Sys", kind: "system", parent: null, axis: "logical" },
+    { id: "api", name: "API", kind: "container", parent: "sys", axis: "logical" },
+    { id: "db", name: "DB", kind: "store", parent: "sys", axis: "logical" },
+    { id: "h1", name: "H1", kind: "component", parent: "api", axis: "logical" },
+  ],
+  edges: [{ from: "h1", to: "db", label: "reads" }],
+  mappings: [],
+};
+
+test("boxWidth grows with the longer label and respects the minimum", () => {
+  assert.equal(boxWidth({ name: "x", kind: "component" }), 130);
+  assert.ok(boxWidth({ name: "a-very-long-component-name-here", kind: "component", tech: "Rust" }) > 130);
+});
+
+test("layoutView produces non-overlapping boxes and routed edges", () => {
+  const v = layoutView(m, "sys", "logical");
+  assert.deepEqual(v.boxes.map((b) => b.id).sort(), ["api", "db"]);
+  assert.equal(v.boxes.find((b) => b.id === "api").hasChildren, true);
+  assert.equal(v.boxes.find((b) => b.id === "db").hasChildren, false);
+  assert.equal(v.edges.length, 1);
+  assert.equal(v.edges[0].points.length, 4);
+  for (let i = 0; i < v.boxes.length; i++)
+    for (let j = i + 1; j < v.boxes.length; j++)
+      assert.equal(rectsOverlap(v.boxes[i], v.boxes[j]), false);
+  assert.ok(v.width > 0 && v.height > 0);
+});
+
+test("layoutView is deterministic (serialized geometry)", () => {
+  const a = layoutView(m, "sys", "logical");
+  const b = layoutView(m, "sys", "logical");
+  assert.equal(
+    JSON.stringify(a.boxes.map((x) => [x.id, x.x, x.y, x.w, x.h])),
+    JSON.stringify(b.boxes.map((x) => [x.id, x.x, x.y, x.w, x.h])),
+  );
+  assert.equal(JSON.stringify(a.edges), JSON.stringify(b.edges));
+});
+
+test("layoutView of a childless focus is empty but well-formed", () => {
+  const v = layoutView(m, "h1", "logical"); // h1 is a leaf in this fixture
+  assert.deepEqual(v.boxes, []);
+  assert.deepEqual(v.edges, []);
+  assert.ok(v.width > 0 && v.height > 0); // no Math.max(...[]) / -Infinity crash
+});

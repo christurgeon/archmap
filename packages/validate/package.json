@@ -1,0 +1,9 @@
+{
+  "name": "@archmap/validate",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "bin": { "archmap-validate": "validate.mjs" },
+  "engines": { "node": ">=22" },
+  "dependencies": { "@archmap/schema": "*" }
+}

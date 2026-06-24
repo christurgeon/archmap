@@ -1,4 +1,7 @@
-import { KINDS, AXES, kindAxis, getNode } from "@archmap/schema";
+import { KINDS, AXES, kindAxis, getNode, ancestorsOf, isLeaf } from "@archmap/schema";
+
+const EDGE_LABEL_MAX_WORDS = 3;
+function wordCount(s) { return String(s ?? "").trim().split(/\s+/).filter(Boolean).length; }
 
 function detectCycle(model, id) {
   const seen = new Set();
@@ -55,6 +58,29 @@ export function validate(model) {
       const pAxis = p.axis ?? "logical";
       const nAxis = n.axis ?? "logical";
       if (pAxis !== nAxis) err("AXIS_INCONSISTENT", `child axis ${nAxis} != parent axis ${pAxis}`, n.id);
+    }
+  }
+
+  const edgeKeys = new Set();
+  for (const e of model.edges) {
+    const f = getNode(model, e.from);
+    const t = getNode(model, e.to);
+    if (!f || !t) { err("EDGE_ENDPOINT_MISSING", "edge endpoint missing", `${e.from}->${e.to}`); continue; }
+    if (e.from === e.to) err("EDGE_SELF", "self edge", e.from);
+    const fAxis = f.axis ?? "logical";
+    const tAxis = t.axis ?? "logical";
+    if (fAxis !== tAxis) err("EDGE_CROSS_AXIS", "edge crosses axes", `${e.from}->${e.to}`);
+    if (!isLeaf(model, e.from) || !isLeaf(model, e.to)) {
+      err("EDGE_NOT_LEAF", "edges must connect leaves", `${e.from}->${e.to}`);
+    }
+    if (ancestorsOf(model, e.from).includes(e.to) || ancestorsOf(model, e.to).includes(e.from)) {
+      err("EDGE_SPANS_HIERARCHY", "edge spans containment hierarchy", `${e.from}->${e.to}`);
+    }
+    const key = `${e.from}->${e.to}`;
+    if (edgeKeys.has(key)) err("EDGE_DUP", "duplicate edge", key);
+    else edgeKeys.add(key);
+    if (wordCount(e.label) > EDGE_LABEL_MAX_WORDS) {
+      err("EDGE_LABEL_BUDGET", `edge label exceeds ${EDGE_LABEL_MAX_WORDS} words`, key);
     }
   }
 

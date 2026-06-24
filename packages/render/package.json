@@ -1,0 +1,9 @@
+{
+  "name": "@archmap/render",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "bin": { "archmap-render": "render.mjs" },
+  "engines": { "node": ">=22" },
+  "dependencies": { "@archmap/schema": "*", "@archmap/validate": "*" }
+}

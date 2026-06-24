@@ -101,3 +101,40 @@ export function setGrounding(model, id, { repo, path, symbol, region, iac, dashb
   node.grounding = g;
   return g;
 }
+
+export function addEdge(model, from, to, label) {
+  requireNode(model, from);
+  requireNode(model, to);
+  if (from === to) throw new Error("addEdge: self-edge");
+  if (model.edges.some((e) => e.from === from && e.to === to)) {
+    throw new Error(`addEdge: duplicate ${from}->${to}`);
+  }
+  const edge = { from, to, label };
+  model.edges.push(edge);
+  return edge;
+}
+
+export function removeEdge(model, from, to) {
+  model.edges = model.edges.filter((e) => !(e.from === from && e.to === to));
+}
+
+export function setEdgeLabel(model, from, to, label) {
+  const e = model.edges.find((x) => x.from === from && x.to === to);
+  if (!e) throw new Error(`setEdgeLabel: no edge ${from}->${to}`);
+  e.label = label;
+}
+
+export function addMapping(model, logical, deploy, label) {
+  requireNode(model, logical);
+  requireNode(model, deploy);
+  if (model.mappings.some((m) => m.logical === logical && m.deploy === deploy)) {
+    throw new Error(`addMapping: duplicate ${logical}~${deploy}`);
+  }
+  const mp = { logical, deploy, label };
+  model.mappings.push(mp);
+  return mp;
+}
+
+export function removeMapping(model, logical, deploy) {
+  model.mappings = model.mappings.filter((m) => !(m.logical === logical && m.deploy === deploy));
+}

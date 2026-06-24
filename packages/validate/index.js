@@ -1,6 +1,8 @@
-import { KINDS, AXES, kindAxis, getNode, ancestorsOf, isLeaf } from "@archmap/schema";
+import { KINDS, AXES, kindAxis, getNode, ancestorsOf, isLeaf, childrenOf, GROUNDABLE_KINDS } from "@archmap/schema";
 
 const EDGE_LABEL_MAX_WORDS = 3;
+const FANOUT_SOFT = 7;
+const FANOUT_HARD = 14;
 function wordCount(s) { return String(s ?? "").trim().split(/\s+/).filter(Boolean).length; }
 
 function detectCycle(model, id) {
@@ -82,6 +84,37 @@ export function validate(model) {
     if (wordCount(e.label) > EDGE_LABEL_MAX_WORDS) {
       err("EDGE_LABEL_BUDGET", `edge label exceeds ${EDGE_LABEL_MAX_WORDS} words`, key);
     }
+  }
+
+  const mapKeys = new Set();
+  for (const mp of model.mappings) {
+    const l = getNode(model, mp.logical);
+    const d = getNode(model, mp.deploy);
+    if (!l || !d) { err("MAPPING_ENDPOINT_MISSING", "mapping endpoint missing", `${mp.logical}~${mp.deploy}`); continue; }
+    if ((l.axis ?? "logical") !== "logical") err("MAPPING_BAD_LOGICAL", "mapping.logical must be on the logical axis", mp.logical);
+    if ((d.axis ?? "logical") !== "deploy") err("MAPPING_BAD_DEPLOY", "mapping.deploy must be on the deploy axis", mp.deploy);
+    const key = `${mp.logical}~${mp.deploy}`;
+    if (mapKeys.has(key)) err("MAPPING_DUP", "duplicate mapping", key);
+    else mapKeys.add(key);
+  }
+
+  for (const n of model.nodes) {
+    const kids = childrenOf(model, n.id).length;
+    if (kids > FANOUT_HARD) err("FANOUT_HARD", `fan-out ${kids} exceeds hard cap ${FANOUT_HARD}`, n.id);
+    else if (kids > FANOUT_SOFT) warn("FANOUT_SOFT", `fan-out ${kids} exceeds soft limit ${FANOUT_SOFT}`, n.id);
+
+    if (GROUNDABLE_KINDS.includes(n.kind) && isLeaf(model, n.id)) {
+      const g = n.grounding;
+      const anchored = g && (g.symbol || g.region || g.iac);
+      if (!anchored) err("GROUNDABLE_UNANCHORED", "groundable leaf needs a symbol, region, or iac anchor", n.id);
+    }
+  }
+
+  // The axis roots form a rendered level too (the __root_<axis> view), so cap them as well.
+  for (const axis of AXES) {
+    const roots = model.nodes.filter((n) => n.parent === null && (n.axis ?? "logical") === axis).length;
+    if (roots > FANOUT_HARD) err("FANOUT_HARD", `axis ${axis} root level has ${roots} nodes, exceeds hard cap ${FANOUT_HARD}`, `__root_${axis}`);
+    else if (roots > FANOUT_SOFT) warn("FANOUT_SOFT", `axis ${axis} root level has ${roots} nodes, exceeds soft limit ${FANOUT_SOFT}`, `__root_${axis}`);
   }
 
   return { errors, warnings };

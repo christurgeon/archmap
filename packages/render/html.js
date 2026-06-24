@@ -1,7 +1,6 @@
 import { getNode, childrenOf, ancestorsOf } from "@archmap/schema";
 import { layoutView } from "./layout.js";
 import { renderViewSvg, esc } from "./svg.js";
-import { viewChildren } from "./promote.js";
 
 export function viewId(focusId, axis) {
   return focusId === null ? `__root_${axis}` : focusId;
@@ -132,7 +131,7 @@ export function render(model) {
   const data = { meta: model.meta, panel, rootLogical: "__root_logical", rootDeploy: hasDeploy ? "__root_deploy" : null };
   const dataJson = JSON.stringify(data).replace(/</g, "\\u003c");
 
-  const axisButtons = `<button class="axis-toggle-logical active" data-axis="logical">Logical</button>` +
+  const axisButtons = `<button class="active" data-axis="logical">Logical</button>` +
     (hasDeploy ? `<button data-axis="deploy">Deploy</button>` : ``);
 
   return `<!doctype html>

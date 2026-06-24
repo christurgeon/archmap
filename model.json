@@ -1,0 +1,31 @@
+{
+  "meta": { "name": "archmap", "version": "0.1.0", "snapshot": "2026-06-23" },
+  "nodes": [
+    { "id": "agent", "name": "Authoring Agent", "kind": "person", "parent": null, "axis": "logical", "blurb": "Edits model.json through the edit-op API." },
+    { "id": "viewer", "name": "Engineer", "kind": "person", "parent": null, "axis": "logical", "blurb": "Reads the rendered map." },
+    { "id": "archmap", "name": "archmap", "kind": "system", "parent": null, "axis": "logical", "blurb": "Agent-authored, grounded architecture map." },
+    { "id": "schema", "name": "schema", "kind": "container", "parent": "archmap", "axis": "logical", "tech": "Node/ESM", "blurb": "Model shape and the edit-operation API." },
+    { "id": "validate", "name": "validate", "kind": "container", "parent": "archmap", "axis": "logical", "tech": "Node/ESM", "blurb": "The gate: errors block render." },
+    { "id": "render", "name": "render", "kind": "container", "parent": "archmap", "axis": "logical", "tech": "Node/ESM", "blurb": "Pure model.json to self-contained HTML." },
+    { "id": "schema-ops", "name": "edit ops", "kind": "component", "parent": "schema", "axis": "logical", "blurb": "addNode, addEdge, setGrounding, …",
+      "grounding": { "repo": "archmap", "path": "packages/schema/index.js", "symbol": { "fqn": "addNode", "kind": "fn" } } },
+    { "id": "validate-core", "name": "validate()", "kind": "component", "parent": "validate", "axis": "logical", "blurb": "Runs all rules, returns errors and warnings.",
+      "grounding": { "repo": "archmap", "path": "packages/validate/index.js", "symbol": { "fqn": "validate", "kind": "fn" } } },
+    { "id": "render-core", "name": "render()", "kind": "component", "parent": "render", "axis": "logical", "blurb": "Builds views and emits HTML.",
+      "grounding": { "repo": "archmap", "path": "packages/render/html.js", "symbol": { "fqn": "render", "kind": "fn" } } },
+    { "id": "layout", "name": "layout", "kind": "component", "parent": "render", "axis": "logical", "blurb": "Layering and geometry.",
+      "grounding": { "repo": "archmap", "path": "packages/render/layout.js", "symbol": { "fqn": "layoutView", "kind": "fn" } } },
+    { "id": "ci", "name": "CI Runner", "kind": "infra", "parent": null, "axis": "deploy", "blurb": "Runs tests + validate on PRs.",
+      "grounding": { "repo": "archmap", "path": ".github/workflows/validate.yml", "iac": "github_actions.validate" } }
+  ],
+  "edges": [
+    { "from": "agent", "to": "schema-ops", "label": "edits model" },
+    { "from": "schema-ops", "to": "validate-core", "label": "gated by" },
+    { "from": "validate-core", "to": "render-core", "label": "unblocks" },
+    { "from": "render-core", "to": "layout", "label": "calls" },
+    { "from": "viewer", "to": "render-core", "label": "reads output" }
+  ],
+  "mappings": [
+    { "logical": "validate", "deploy": "ci", "label": "runs in" }
+  ]
+}

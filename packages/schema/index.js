@@ -86,3 +86,18 @@ export function removeNode(model, id) {
   model.edges = model.edges.filter((e) => e.from !== id && e.to !== id);
   model.mappings = model.mappings.filter((m) => m.logical !== id && m.deploy !== id);
 }
+
+export function setBlurb(model, id, text) { requireNode(model, id).blurb = text; }
+export function setTech(model, id, tech) { requireNode(model, id).tech = tech; }
+export function setLinks(model, id, links) { requireNode(model, id).links = links; }
+
+export function setGrounding(model, id, { repo, path, symbol, region, iac, dashboard }) {
+  const node = requireNode(model, id);
+  const g = { repo: repo ?? node.grounding?.repo, path };
+  if (symbol !== undefined) g.symbol = symbol;
+  if (region !== undefined) g.region = region;
+  if (iac !== undefined) g.iac = iac;
+  if (dashboard !== undefined) g.dashboard = dashboard;
+  node.grounding = g;
+  return g;
+}

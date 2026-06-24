@@ -29,3 +29,17 @@ export function resolve(anchor, path, index) {
 
   return { state: "MISSING" };
 }
+
+const SEVERITY = ["CLEAN", "UNBASELINED", "MOVED", "CHANGED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"];
+const CLEAN_ENOUGH = new Set(["CLEAN", "UNBASELINED"]);
+
+export function resolveRegion(region, path, index, opts = {}) {
+  const hashes = opts.hashes ?? {};
+  const parts = region.anchors.map((fqn) => {
+    const anchor = { fqn, kind: "fn", bodyHash: hashes[fqn] };
+    return { fqn, state: resolve(anchor, path, index).state };
+  });
+  const allClean = parts.every((p) => CLEAN_ENOUGH.has(p.state));
+  const worst = parts.reduce((w, p) => (SEVERITY.indexOf(p.state) > SEVERITY.indexOf(w) ? p.state : w), "CLEAN");
+  return { state: allClean ? "CLEAN" : worst, parts };
+}

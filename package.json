@@ -8,6 +8,7 @@
   "scripts": {
     "test": "node --test",
     "validate": "node packages/validate/validate.mjs",
-    "render": "node packages/render/render.mjs"
+    "render": "node packages/render/render.mjs",
+    "resolve": "node packages/resolve/resolve.mjs"
   }
 }

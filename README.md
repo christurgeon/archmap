@@ -1,5 +1,10 @@
 # archmap
 
+[![node](https://img.shields.io/badge/node-%3E%3D22-3c873a?logo=node.js&logoColor=white)](https://nodejs.org)
+[![runtime deps](https://img.shields.io/badge/runtime%20deps-zero-2563eb)](#install-node--22)
+[![tests](https://img.shields.io/badge/tests-94%20passing-3c873a)](packages)
+[![model](https://img.shields.io/badge/model-C4-8b5cf6)](spec.md)
+
 A self-contained, navigable architecture map an agent authors and maintains.
 The source of truth is `model.json`; the rendered HTML is a pure function of it.
 

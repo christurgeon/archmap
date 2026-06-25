@@ -28,3 +28,18 @@ test("renderViewSvg emits boxes, edges, labels and escapes text", () => {
   assert.match(svg, />calls</);
   assert.doesNotMatch(svg, /<Co>/);                    // unescaped angle brackets must not appear
 });
+
+test("renderViewSvg emits the visual system: rail, arrowhead marker, marker-end", () => {
+  const svg = renderViewSvg(view);
+  assert.match(svg, /class="amrect"/);                 // main box rect is class-scoped (rail isolation)
+  assert.match(svg, /class="amrail"/);                 // per-box kind rail
+  assert.match(svg, /<marker id="arw-sys"/);           // per-view marker, id from focusId
+  assert.match(svg, /markerUnits="userSpaceOnUse"/);
+  assert.doesNotMatch(svg, /<path[^>]*fill=/);         // marker path takes its fill from CSS, not an attr
+  assert.match(svg, /class="amedge"[^>]*marker-end="url\(#arw-sys\)"/); // edges carry the arrowhead
+});
+
+test("root views derive a sanitized marker id from the axis", () => {
+  const rootView = { ...view, focusId: null, axis: "deploy" };
+  assert.match(renderViewSvg(rootView), /<marker id="arw-root-deploy"/);
+});

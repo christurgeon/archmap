@@ -207,6 +207,15 @@ nothing about the model. Edge labels render on a layer above the boxes (legibili
 Boundary boxes render from containment. Externals greyed. This is what lets an agent
 maintain the architecture without ever producing pixels.
 
+**Visual system (renderer-owned, never authored).** `kind` drives a per-kind accent — shown
+as a left rail and, on drillable boxes, the border — so each level reads at a glance; the
+in-box `kind · tech` text keeps kind legible without colour (colourblind-safe). Edges carry
+arrowheads; boxes carry subtle depth; a legend lists the kinds present. Output ships a light
+and a dark theme as CSS-variable sets: a stored choice wins via `:root[data-theme]`, otherwise
+`prefers-color-scheme` governs (`:root:not([data-theme])`), and a pre-paint `<head>` script
+applies the stored choice with no flash. The default render stays deterministic — the theme is
+client runtime state, not output variance.
+
 ---
 
 ## 9. Grounding resolver — resolve-at-check-time
@@ -338,3 +347,11 @@ map is honest, only that the boxes are.
    one language first.
 3. **Decide** node-freshness vs edge-truth (§§10–11) before investing further. If edge-truth,
    that's a separate analysis package and a different (harder, defensible) product.
+
+   **Decision (2026-06-25): edge-truth deferred.** A static MVP is mostly noise for this
+   codebase — most architecture edges are deliberate abstractions, not function calls (4 of 5
+   edges in `model.json` have no backing call), and §11's transport blind spot (HTTP/bus/DI)
+   guts the signal for the polyglot target it's ostensibly for. The valuable form is
+   runtime-backed (OpenTelemetry spans / access logs) and should be decided against a real
+   target system, not archmap itself. §§10–11 stay as the analysis behind this hold. Current
+   shipped scope is steps 1–2: the artifact chain plus the node-freshness resolver.

@@ -1,4 +1,4 @@
-import { getNode, childrenOf, ancestorsOf } from "@archmap/schema";
+import { getNode, childrenOf, ancestorsOf, KINDS } from "@archmap/schema";
 import { layoutView } from "./layout.js";
 import { renderViewSvg, esc } from "./svg.js";
 
@@ -17,31 +17,56 @@ export function collectViews(model) {
   return views;
 }
 
+// Two surface sets, one accent identity per kind. The agent never picks a colour
+// (spec §2: colours are renderer-owned geometry); these are the renderer's.
+const DARK = "--bg:#0d1219;--panel:#141b24;--box:#1a2230;--stroke:#2b3543;--ink:#e8eef5;--muted:#8b97a6;--edge:#46586b;--accent:#58a6ff;--shadow:0 1px 2px rgba(0,0,0,.45);"
+  + "--k-person:#e0a458;--k-system:#8b7cf0;--k-external:#6b7685;--k-container:#3fb6ac;--k-store:#56c08d;--k-tenant:#a06cd9;--k-component:#58a6ff;--k-cloud:#e0794b;--k-network:#d9a94e;--k-infra:#b56a52;--k-workload:#8fa05a;";
+const LIGHT = "--bg:#f6f8fc;--panel:#ffffff;--box:#ffffff;--stroke:#dce3ec;--ink:#1f2933;--muted:#5b6b7d;--edge:#9aa9ba;--accent:#2f7fd8;--shadow:0 1px 2px rgba(31,41,51,.12);"
+  + "--k-person:#c4842c;--k-system:#6c5ce0;--k-external:#8a96a5;--k-container:#1f9b92;--k-store:#2f9e63;--k-tenant:#8a4fc0;--k-component:#2f7fd8;--k-cloud:#cf6a3a;--k-network:#bf8d2e;--k-infra:#9e5640;--k-workload:#6f8038;";
+
+// Per-kind rail fill + per-kind drillable border. These MUST come after the
+// generic `.drillable .amrect` rule (same specificity, source-order wins) and
+// before `.ambox.external .amrect`, which stays last so externals read grey.
+const KIND_RULES = KINDS.map((k) =>
+  `.kind-${k} .amrail{fill:var(--k-${k})}.kind-${k}.drillable .amrect{stroke:var(--k-${k})}`
+).join("");
+
 const STYLE = `
-:root{--bg:#0f1419;--panel:#171c24;--box:#1f2630;--ink:#e6edf3;--muted:#9aa7b4;--edge:#43505f;--accent:#4493f8;}
+:root{${DARK}}
+:root[data-theme="dark"]{${DARK}}
+:root[data-theme="light"]{${LIGHT}}
+@media (prefers-color-scheme: light){:root:not([data-theme]){${LIGHT}}}
 *{box-sizing:border-box}
 body{margin:0;font:14px/1.4 system-ui,sans-serif;background:var(--bg);color:var(--ink);display:flex;height:100vh}
 #main{flex:1;display:flex;flex-direction:column;min-width:0}
-header{padding:10px 16px;border-bottom:1px solid #222b36;display:flex;gap:12px;align-items:center}
+header{padding:10px 16px;border-bottom:1px solid var(--stroke);display:flex;gap:12px;align-items:center}
 header h1{font-size:15px;margin:0;font-weight:600}
 .snapshot{color:var(--muted);font-size:12px}
 .axis-toggle{margin-left:auto;display:flex;gap:6px}
-.axis-toggle button,.crumb button{background:var(--box);color:var(--ink);border:1px solid #2a333f;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
+.axis-toggle button,#crumbs button{background:var(--box);color:var(--ink);border:1px solid var(--stroke);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
 .axis-toggle button.active{background:var(--accent);border-color:var(--accent);color:#fff}
 #crumbs{padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;color:var(--muted)}
+#legend{padding:0 16px 10px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:11px}
+#legend .lg{display:inline-flex;align-items:center;gap:5px}
+#legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 #canvas{flex:1;overflow:auto;padding:24px}
 .view{display:none}
 .view.active{display:block}
 svg.amview{max-width:100%;height:auto}
 .amedge{stroke:var(--edge);stroke-width:1.5}
-.ambox rect{fill:var(--box);stroke:#33414f;stroke-width:1.5}
+.amview marker path{fill:var(--edge)}
+.amrect{fill:var(--box);stroke:var(--stroke);stroke-width:1.5;filter:drop-shadow(var(--shadow))}
+.amrail{stroke:none}
+.ambox{transition:opacity .12s}
 .ambox .amname{fill:var(--ink);font-weight:600}
 .ambox .amsub{fill:var(--muted);font-size:11px}
-.ambox.drillable{cursor:pointer}.ambox.drillable rect{stroke:var(--accent)}
+.ambox.drillable{cursor:pointer}
 .ambox.leaf{cursor:pointer}
-.ambox.external rect{fill:#20242b;stroke:#3a4350;stroke-dasharray:4 3}
+.drillable .amrect{stroke:var(--accent)}
+${KIND_RULES}
+.ambox.external .amrect{fill:var(--box);stroke:var(--k-external);stroke-dasharray:4 3}
 .ambox.external .amname{fill:var(--muted)}
-.amlabel rect{fill:#0f1419;opacity:.85}.amlabel text{fill:var(--muted);font-size:11px}
+.amlabel rect{fill:var(--panel);opacity:.92;stroke:var(--stroke);stroke-width:.75}.amlabel text{fill:var(--muted);font-size:11px}
 /* declutter: dense views hide labels until you hover a box (or toggle them all on) */
 .amlabel{transition:opacity .12s}
 .view.dense .amlabel{opacity:0}
@@ -51,18 +76,17 @@ body.show-labels .view.dense .amlabel{opacity:1}
 .amedge{transition:stroke .12s,opacity .12s}
 .amedge.hot{stroke:var(--accent);stroke-width:2}
 .amedge.dim{opacity:.15}
-.ambox{transition:opacity .12s}
 .ambox.dim{opacity:.3}
-.lblbtn{margin-left:8px;background:var(--box);color:var(--ink);border:1px solid #2a333f;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
+.lblbtn{margin-left:8px;background:var(--box);color:var(--ink);border:1px solid var(--stroke);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
 .lblbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 #panel .rel{margin:3px 0}#panel .rel .dir{color:var(--muted);margin-right:5px}
-#panel{width:480px;background:var(--panel);border-left:1px solid #222b36;padding:16px;overflow:auto;display:none}
+#panel{width:480px;background:var(--panel);border-left:1px solid var(--stroke);padding:16px;overflow:auto;display:none}
 #panel.open{display:block}
 #panel h2{font-size:15px;margin:0 0 4px}
 #panel .kindline{color:var(--muted);font-size:12px;margin-bottom:10px}
 #panel section{margin:12px 0;font-size:13px}
 #panel h3{font-size:11px;text-transform:uppercase;color:var(--muted);margin:0 0 4px;letter-spacing:.04em}
-#panel code{background:#0f1419;padding:1px 5px;border-radius:4px;font-size:12px}
+#panel code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12px}
 #panel a{color:var(--accent)}
 #panel .close{float:right;cursor:pointer;color:var(--muted);background:none;border:0;font-size:16px}
 `;
@@ -138,6 +162,17 @@ document.querySelectorAll('.ambox').forEach(g=>{
 });
 const lt=document.getElementById('lbltoggle');
 if(lt)lt.onclick=()=>{document.body.classList.toggle('show-labels');lt.classList.toggle('active');};
+// Theme: a stored choice wins via [data-theme]; otherwise the OS preference governs
+// through the CSS media query. When unset we read the rendered theme from matchMedia
+// so the first click flips what the user actually sees, then we persist it.
+const themeMql=matchMedia('(prefers-color-scheme: light)');
+function effTheme(){const a=document.documentElement.dataset.theme;return a==='light'||a==='dark'?a:(themeMql.matches?'light':'dark');}
+const tt=document.getElementById('themetoggle');
+function paintThemeBtn(){if(tt)tt.textContent=effTheme()==='light'?'☾\\uFE0E':'☀\\uFE0E';}
+paintThemeBtn();
+themeMql.addEventListener&&themeMql.addEventListener('change',paintThemeBtn);
+if(tt)tt.onclick=()=>{const next=effTheme()==='light'?'dark':'light';document.documentElement.dataset.theme=next;
+  try{localStorage.setItem('archmap-theme',next)}catch(e){}paintThemeBtn();};
 show(D.rootDeploy && location.hash==='#deploy' ? D.rootDeploy : D.rootLogical);
 `;
 
@@ -172,16 +207,25 @@ export function render(model) {
   const axisButtons = `<button class="active" data-axis="logical">Logical</button>` +
     (hasDeploy ? `<button data-axis="deploy">Deploy</button>` : ``);
 
+  // Legend: the distinct kinds actually present, in canonical order. Dots colour
+  // themselves from the kind vars, so they follow the active theme.
+  const present = KINDS.filter((k) => model.nodes.some((n) => n.kind === k));
+  const legend = present.map((k) =>
+    `<span class="lg kind-${k}"><span class="dot" style="background:var(--k-${k})"></span>${esc(k)}</span>`
+  ).join("");
+
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(model.meta.name)} — archmap</title>
-<style>${STYLE}</style></head>
+<style>${STYLE}</style>
+<script>try{var t=localStorage.getItem('archmap-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script></head>
 <body>
 <div id="main">
 <header><h1>${esc(model.meta.name)}</h1><span class="snapshot">v${esc(model.meta.version)} · ${esc(model.meta.snapshot)}</span>
-<span class="axis-toggle">${axisButtons}</span><button id="lbltoggle" class="lblbtn" title="Show all edge labels">Labels</button></header>
+<span class="axis-toggle">${axisButtons}</span><button id="lbltoggle" class="lblbtn" title="Show all edge labels">Labels</button><button id="themetoggle" class="lblbtn" title="Toggle light / dark theme">◐</button></header>
 <div id="crumbs"></div>
+<div id="legend">${legend}</div>
 <div id="canvas">
 ${svgs}
 </div>

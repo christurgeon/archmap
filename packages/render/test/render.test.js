@@ -68,3 +68,33 @@ test("render emits the label toggle, edge data hooks, and per-node relationships
   assert.match(html, /data-from="user" data-to="sys"/); // edge hook (user->h promotes to user->sys at root)
   assert.match(html, /"edges":\[\{"dir":"out","to":"h"/); // raw relationships carried into panel data
 });
+
+test("render ships the themed visual system", () => {
+  const html = render(model());
+  // semantic colour-by-kind vars (renderer-owned, spec §2)
+  assert.match(html, /--k-person:/);
+  assert.match(html, /--k-workload:/);
+  // theme cascade: explicit light override + OS default scoped so an explicit
+  // data-theme always wins (the B1 bug class)
+  assert.match(html, /\[data-theme="light"\]/);
+  assert.match(html, /:root:not\(\[data-theme\]\)/);
+  assert.match(html, /prefers-color-scheme: ?light/);
+  // pre-paint init (no FOUC) + the toggle control
+  assert.match(html, /localStorage\.getItem\('archmap-theme'\)/);
+  assert.match(html, /id="themetoggle"/);
+  // arrowhead colour from CSS (var() can't live on the marker attr); depth via filter
+  assert.match(html, /\.amview marker path\{fill:var\(--edge\)\}/);
+  assert.match(html, /filter:drop-shadow\(var\(--shadow\)\)/);
+});
+
+test("render's legend lists exactly the present kinds, in canonical order", () => {
+  const html = render(model());            // present: person, system, container, component, workload
+  const legend = html.match(/<div id="legend">(.*?)<\/div>/s)[1];
+  assert.match(legend, /class="lg kind-person"/);
+  assert.match(legend, /class="lg kind-workload"/);
+  assert.doesNotMatch(legend, /kind-store/);   // no store node -> absent from the legend
+  assert.doesNotMatch(legend, /kind-external/);
+  // canonical KINDS order: person(0) < container(3) < component(6)
+  assert.ok(legend.indexOf("kind-person") < legend.indexOf("kind-container"));
+  assert.ok(legend.indexOf("kind-container") < legend.indexOf("kind-component"));
+});

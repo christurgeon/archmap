@@ -61,3 +61,10 @@ test("render with no deploy nodes nulls rootDeploy and omits the toggle", () => 
   assert.match(html, /"rootDeploy":null/);
   assert.doesNotMatch(html, /data-axis="deploy"/);
 });
+
+test("render emits the label toggle, edge data hooks, and per-node relationships", () => {
+  const html = render(model());
+  assert.match(html, /id="lbltoggle"/);                 // the Labels toggle button
+  assert.match(html, /data-from="user" data-to="sys"/); // edge hook (user->h promotes to user->sys at root)
+  assert.match(html, /"edges":\[\{"dir":"out","to":"h"/); // raw relationships carried into panel data
+});

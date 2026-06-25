@@ -27,11 +27,59 @@ export function layerize(childIds, edges) {
 }
 
 const BOX_H = 64, V_GAP = 70, H_GAP = 40, CHAR_W = 8, BOX_PAD = 24, BOX_MIN_W = 130, MARGIN = 40;
+const LABEL_H = 18, LABEL_VGAP = 4, LABEL_CHAR_W = 6.8, LABEL_BASE_W = 12;
 
 export function boxWidth(node) {
   const sub = (node.kind ?? "") + (node.tech ? " · " + node.tech : "");
   const chars = Math.max(String(node.name ?? "").length, sub.length);
   return Math.max(BOX_MIN_W, chars * CHAR_W + BOX_PAD);
+}
+
+function labelWidth(label) {
+  return label.length * LABEL_CHAR_W + LABEL_BASE_W;
+}
+
+function rectsOverlap(a, b, padX, padY) {
+  return a.x < b.x + b.w + padX && b.x < a.x + a.w + padX &&
+         a.y < b.y + b.h + padY && b.y < a.y + a.h + padY;
+}
+
+// Keeping labels legible and non-overlapping is the renderer's job, not
+// something a model author hand-tunes. Each label starts at the midpoint of
+// its edge's horizontal segment, then nudges vertically (0, +1, -1, +2, -2, …
+// rows) until it clears every box and every already-placed label. Returns the
+// lowest label bottom so the caller can grow the canvas if the stack spills past it.
+function placeLabels(routed, boxes) {
+  const boxRects = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
+  const placed = [];
+  const step = LABEL_H + LABEL_VGAP;
+  const labeled = routed.filter((e) => e.label);
+  // Top-to-bottom, then left-to-right: predictable, stable stacking.
+  labeled.sort((e1, e2) => {
+    const dy = e1.points[1][1] - e2.points[1][1];
+    if (dy !== 0) return dy;
+    return (e1.points[1][0] + e1.points[2][0]) - (e2.points[1][0] + e2.points[2][0]);
+  });
+  let maxBottom = 0;
+  for (const e of labeled) {
+    const lx = (e.points[1][0] + e.points[2][0]) / 2;
+    const w = labelWidth(e.label);
+    const anchorY = e.points[1][1];
+    let cy = anchorY;
+    for (let k = 0; k < 80; k++) {
+      const mult = k === 0 ? 0 : (k % 2 === 1 ? (k + 1) / 2 : -k / 2);
+      const candY = anchorY + mult * step;
+      const rect = { x: lx - w / 2, y: candY - LABEL_H / 2, w, h: LABEL_H };
+      if (rect.y < MARGIN / 2) continue; // don't drift above the top margin
+      const hitsBox = boxRects.some((r) => rectsOverlap(rect, r, 2, 2));
+      const hitsLabel = placed.some((r) => rectsOverlap(rect, r, 4, 2));
+      if (!hitsBox && !hitsLabel) { cy = candY; break; }
+    }
+    placed.push({ x: lx - w / 2, y: cy - LABEL_H / 2, w, h: LABEL_H });
+    e.lx = lx; e.ly = cy; e.lw = w;
+    maxBottom = Math.max(maxBottom, cy + LABEL_H / 2);
+  }
+  return maxBottom;
 }
 
 export function layoutView(model, focusId, axis) {
@@ -68,7 +116,10 @@ export function layoutView(model, focusId, axis) {
     return { from: e.from, to: e.to, label: e.label, points: [[x1, y1], [x1, ymid], [x2, ymid], [x2, y2]] };
   });
 
+  const labelBottom = placeLabels(routed, boxes);
+
   const width = totalW + MARGIN * 2;
-  const height = MARGIN * 2 + layers.length * BOX_H + Math.max(0, layers.length - 1) * V_GAP;
+  const boxesHeight = MARGIN * 2 + layers.length * BOX_H + Math.max(0, layers.length - 1) * V_GAP;
+  const height = Math.max(boxesHeight, labelBottom + MARGIN);
   return { boxes, edges: routed, width, height, focusId, axis };
 }

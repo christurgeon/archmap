@@ -79,3 +79,45 @@ test("layoutView of a childless focus is empty but well-formed", () => {
   assert.deepEqual(v.edges, []);
   assert.ok(v.width > 0 && v.height > 0); // no Math.max(...[]) / -Infinity crash
 });
+
+// Non-overlapping labels are the renderer's guarantee, not a model-author
+// concern. Mirror svg.js's label geometry, preferring the layout-provided
+// lx/ly/lw when present.
+const LABEL_H = 18;
+function labelRect(e) {
+  const lx = e.lx != null ? e.lx : (e.points[1][0] + e.points[2][0]) / 2;
+  const ly = e.ly != null ? e.ly : e.points[1][1];
+  const w = e.lw != null ? e.lw : e.label.length * 6.8 + 12;
+  return { x: lx - w / 2, y: ly - LABEL_H / 2, w, h: LABEL_H, label: e.label };
+}
+
+test("edge labels do not overlap each other or boxes", () => {
+  // A hub fanning out to a row of nodes, each edge carrying a wide, aggregated
+  // label — the dense fan-out that otherwise piles labels onto one line.
+  const hub = {
+    meta: { name: "x", version: "1", snapshot: "s" },
+    nodes: [
+      { id: "hub", name: "Hub", kind: "system", parent: null, axis: "logical" },
+      { id: "a", name: "Target A", kind: "external", parent: null, axis: "logical" },
+      { id: "b", name: "Target B", kind: "external", parent: null, axis: "logical" },
+      { id: "c", name: "Target C", kind: "external", parent: null, axis: "logical" },
+    ],
+    edges: [
+      { from: "hub", to: "a", label: "writes workflow, REST API, writes values.yaml" },
+      { from: "hub", to: "b", label: "verifies JWT, OIDC login" },
+      { from: "hub", to: "c", label: "submits create request" },
+    ],
+    mappings: [],
+  };
+  const v = layoutView(hub, null, "logical");
+  const labels = v.edges.filter((e) => e.label).map(labelRect);
+  assert.equal(labels.length, 3);
+  for (let i = 0; i < labels.length; i++)
+    for (let j = i + 1; j < labels.length; j++)
+      assert.equal(rectsOverlap(labels[i], labels[j]), false,
+        `labels overlap: "${labels[i].label}" / "${labels[j].label}"`);
+  for (const L of labels)
+    for (const box of v.boxes)
+      assert.equal(rectsOverlap(L, box), false,
+        `label "${L.label}" overlaps box ${box.id}`);
+});

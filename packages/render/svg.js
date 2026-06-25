@@ -15,7 +15,7 @@ export function renderViewSvg(view) {
   out.push(`<svg class="amview" viewBox="0 0 ${view.width} ${view.height}" width="${view.width}" height="${view.height}" xmlns="http://www.w3.org/2000/svg">`);
 
   for (const e of view.edges) {
-    out.push(`<polyline class="amedge" points="${poly(e.points)}" fill="none" />`);
+    out.push(`<polyline class="amedge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" points="${poly(e.points)}" fill="none" />`);
   }
 
   for (const b of view.boxes) {
@@ -32,10 +32,12 @@ export function renderViewSvg(view) {
 
   for (const e of view.edges) {
     if (!e.label) continue;
-    const lx = (e.points[1][0] + e.points[2][0]) / 2;
-    const ly = e.points[1][1];
-    const halfW = e.label.length * 3.4 + 6;
-    out.push(`<g class="amlabel">`);
+    // Prefer the deconflicted geometry from layout; fall back to the segment
+    // midpoint for callers that don't compute label placement.
+    const lx = e.lx != null ? e.lx : (e.points[1][0] + e.points[2][0]) / 2;
+    const ly = e.ly != null ? e.ly : e.points[1][1];
+    const halfW = e.lw != null ? e.lw / 2 : e.label.length * 3.4 + 6;
+    out.push(`<g class="amlabel" data-from="${esc(e.from)}" data-to="${esc(e.to)}">`);
     out.push(`<rect x="${lx - halfW}" y="${ly - 9}" width="${halfW * 2}" height="18" rx="3" />`);
     out.push(`<text x="${lx}" y="${ly + 3}" text-anchor="middle">${esc(e.label)}</text>`);
     out.push(`</g>`);

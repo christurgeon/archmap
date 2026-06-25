@@ -42,7 +42,21 @@ svg.amview{max-width:100%;height:auto}
 .ambox.external rect{fill:#20242b;stroke:#3a4350;stroke-dasharray:4 3}
 .ambox.external .amname{fill:var(--muted)}
 .amlabel rect{fill:#0f1419;opacity:.85}.amlabel text{fill:var(--muted);font-size:11px}
-#panel{width:320px;background:var(--panel);border-left:1px solid #222b36;padding:16px;overflow:auto;display:none}
+/* declutter: dense views hide labels until you hover a box (or toggle them all on) */
+.amlabel{transition:opacity .12s}
+.view.dense .amlabel{opacity:0}
+.amlabel.vis{opacity:1}
+.amlabel.dim{opacity:0}
+body.show-labels .view.dense .amlabel{opacity:1}
+.amedge{transition:stroke .12s,opacity .12s}
+.amedge.hot{stroke:var(--accent);stroke-width:2}
+.amedge.dim{opacity:.15}
+.ambox{transition:opacity .12s}
+.ambox.dim{opacity:.3}
+.lblbtn{margin-left:8px;background:var(--box);color:var(--ink);border:1px solid #2a333f;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
+.lblbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+#panel .rel{margin:3px 0}#panel .rel .dir{color:var(--muted);margin-right:5px}
+#panel{width:480px;background:var(--panel);border-left:1px solid #222b36;padding:16px;overflow:auto;display:none}
 #panel.open{display:block}
 #panel h2{font-size:15px;margin:0 0 4px}
 #panel .kindline{color:var(--muted);font-size:12px;margin-bottom:10px}
@@ -93,6 +107,8 @@ function openPanel(id){
     d.mappings.forEach(m=>{h+='<div>'+esc(m.label)+' → <a href="#" data-go="'+esc(m.to)+'">'+esc(m.name)+'</a></div>';});h+='</section>';}
   if(d.links&&d.links.length){h+='<section><h3>Links</h3>';
     d.links.forEach(l=>{h+='<div><a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label)+'</a></div>';});h+='</section>';}
+  if(d.edges&&d.edges.length){h+='<section><h3>Relationships</h3>';
+    d.edges.forEach(r=>{h+='<div class="rel"><span class="dir">'+(r.dir==='out'?'→':'←')+'</span>'+(r.label?esc(r.label)+' ':'')+'<a href="#" data-go="'+esc(r.to)+'">'+esc(r.name)+'</a></div>';});h+='</section>';}
   p.innerHTML=h;
   p.querySelectorAll('[data-go]').forEach(a=>a.onclick=(e)=>{e.preventDefault();const t=a.getAttribute('data-go');
     const v=document.querySelector('.view[data-view="'+t+'"]');if(v)show(t);openPanel(t);});
@@ -107,6 +123,21 @@ document.querySelectorAll('.axis-toggle button').forEach(b=>{
   b.onclick=()=>{document.querySelectorAll('.axis-toggle button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');show(rootId(b.dataset.axis));};
 });
+// Hover a box to reveal its relationships and dim the rest; toggle to pin all labels.
+document.querySelectorAll('.ambox').forEach(g=>{
+  g.addEventListener('mouseenter',()=>{
+    const view=g.closest('.view');if(!view)return;const id=g.dataset.id;const nb=new Set([id]);
+    view.querySelectorAll('.amedge').forEach(e=>{const on=e.dataset.from===id||e.dataset.to===id;
+      if(on){nb.add(e.dataset.from);nb.add(e.dataset.to);}e.classList.toggle('hot',on);e.classList.toggle('dim',!on);});
+    view.querySelectorAll('.amlabel').forEach(l=>{const on=l.dataset.from===id||l.dataset.to===id;
+      l.classList.toggle('vis',on);l.classList.toggle('dim',!on);});
+    view.querySelectorAll('.ambox').forEach(b=>b.classList.toggle('dim',!nb.has(b.dataset.id)));
+  });
+  g.addEventListener('mouseleave',()=>{const view=g.closest('.view');if(!view)return;
+    view.querySelectorAll('.hot,.dim,.vis').forEach(el=>el.classList.remove('hot','dim','vis'));});
+});
+const lt=document.getElementById('lbltoggle');
+if(lt)lt.onclick=()=>{document.body.classList.toggle('show-labels');lt.classList.toggle('active');};
 show(D.rootDeploy && location.hash==='#deploy' ? D.rootDeploy : D.rootLogical);
 `;
 
@@ -114,7 +145,10 @@ export function render(model) {
   const views = collectViews(model);
   const svgs = views.map((v) => {
     const layout = layoutView(model, v.focusId, v.axis);
-    return `<div class="view" data-view="${esc(viewId(v.focusId, v.axis))}" data-axis="${v.axis}">${renderViewSvg(layout)}</div>`;
+    // Dense views (many labelled edges) start clean and reveal on hover; sparse
+    // views keep their few labels on. The header toggle overrides either way.
+    const dense = layout.edges.filter((e) => e.label).length > 6 ? " dense" : "";
+    return `<div class="view${dense}" data-view="${esc(viewId(v.focusId, v.axis))}" data-axis="${v.axis}">${renderViewSvg(layout)}</div>`;
   }).join("\n");
 
   const panel = {};
@@ -125,6 +159,10 @@ export function render(model) {
       breadcrumb: ancestorsOf(model, n.id).slice().reverse(),
       mappings: model.mappings.filter((m) => m.logical === n.id)
         .map((m) => ({ to: m.deploy, label: m.label, name: getNode(model, m.deploy)?.name ?? m.deploy })),
+      edges: model.edges.filter((e) => e.from === n.id || e.to === n.id).map((e) => {
+        const out = e.from === n.id, other = out ? e.to : e.from;
+        return { dir: out ? "out" : "in", to: other, name: getNode(model, other)?.name ?? other, label: e.label };
+      }),
     };
   }
   const hasDeploy = model.nodes.some((n) => (n.axis ?? "logical") === "deploy");
@@ -142,7 +180,7 @@ export function render(model) {
 <body>
 <div id="main">
 <header><h1>${esc(model.meta.name)}</h1><span class="snapshot">v${esc(model.meta.version)} · ${esc(model.meta.snapshot)}</span>
-<span class="axis-toggle">${axisButtons}</span></header>
+<span class="axis-toggle">${axisButtons}</span><button id="lbltoggle" class="lblbtn" title="Show all edge labels">Labels</button></header>
 <div id="crumbs"></div>
 <div id="canvas">
 ${svgs}

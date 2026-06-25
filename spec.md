@@ -338,3 +338,11 @@ map is honest, only that the boxes are.
    one language first.
 3. **Decide** node-freshness vs edge-truth (§§10–11) before investing further. If edge-truth,
    that's a separate analysis package and a different (harder, defensible) product.
+
+   **Decision (2026-06-25): edge-truth deferred.** A static MVP is mostly noise for this
+   codebase — most architecture edges are deliberate abstractions, not function calls (4 of 5
+   edges in `model.json` have no backing call), and §11's transport blind spot (HTTP/bus/DI)
+   guts the signal for the polyglot target it's ostensibly for. The valuable form is
+   runtime-backed (OpenTelemetry spans / access logs) and should be decided against a real
+   target system, not archmap itself. §§10–11 stay as the analysis behind this hold. Current
+   shipped scope is steps 1–2: the artifact chain plus the node-freshness resolver.

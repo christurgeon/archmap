@@ -85,7 +85,20 @@ interface Node {
   grounding?: Grounding;  // REQUIRED on groundable leaves (component/store/infra/workload/container)
 }
 
-interface Edge { from: string; to: string; label: string; } // leaf-to-leaf, SAME axis
+interface Edge {
+  from: string; to: string; label: string;   // leaf-to-leaf, SAME axis
+  evidence?: EdgeEvidence;                   // OPTIONAL citation: where this edge is realized
+}
+
+// An edge citation is a claim about the CODE ("realized at layout.js::layoutView"), not a
+// claim about the checker ("this edge is verifiable"). The first is falsifiable by the
+// resolver; the second would be author self-certification. See §9.1.
+interface EdgeEvidence {
+  kind: "call" | "import" | "test" | "config" | "doc";
+  path: string;             // primary location; default path for anchors that omit one
+  anchors: SymbolAnchor[];  // >= 1 for call/import/test; empty for config/doc
+  note?: string;            // REQUIRED for "doc" (the kind no machine can check)
+}
 interface Mapping { logical: string; deploy: string; label: string; } // the ONLY cross-axis link
 
 interface Model {
@@ -115,6 +128,8 @@ interface Grounding {
 
 interface SymbolAnchor {
   fqn: string;             // language-normalized fully-qualified name (SCIP-style)
+  path?: string;           // per-anchor override; an edge's caller and callee are in
+                           // DIFFERENT files by construction, so a single path can't serve both
   kind: "fn" | "method" | "class" | "type" | "module" | "iac_resource";
   bodyHash?: string;       // hash of NORMALIZED AST (comments/whitespace/local names stripped)
   sigHash?: string;        // signature only — survives body edits, dies on rename
@@ -177,6 +192,7 @@ removeNode(id)                        # fails if it has children
 setBlurb(id, text) | setTech(id, tech) | setLinks(id, links)
 setGrounding(id, { symbol|region|iac, path, dashboard? })
 addEdge(from, to, label) | removeEdge(from, to) | setEdgeLabel(from, to, label)
+setEdgeEvidence(from, to, { kind, path, anchors, note? })   # cite where the edge is realized; null clears
 addMapping(logical, deploy, label) | removeMapping(logical, deploy)
 ```
 
@@ -193,6 +209,11 @@ addMapping(logical, deploy, label) | removeMapping(logical, deploy)
 - Mappings: logical endpoint is logical, deploy endpoint is deploy.
 - Fan-out within limits; groundable leaves carry an anchor (symbol/region/iac).
 - **`lines` authored by hand → warning** (it is derived output, not input).
+- Edge evidence, **when present**, is well-formed: known `kind`, non-empty `path`, anchors for
+  the symbol kinds, `fqn`+`kind` on each anchor, and a `note` on `doc`. Evidence itself stays
+  **optional** — requiring it would push authors toward fabricated citations, which is the
+  self-certification failure §9.1 exists to prevent. An uncited edge is an honest model fact.
+- **Edge evidence resolution authored by hand → warning** (same rule as `lines`).
 
 Cleanliness is a guarantee, not a hope: the prompt encourages it, the gate rejects what
 slips through.
@@ -280,6 +301,33 @@ automation never makes drift invisible *without* per-PR friction. Whether you ca
 per-PR surfacing at all is a function of churn rate — measure it on your own repos before
 choosing the queue cadence.
 
+### 9.1 Edge citations — the same machinery, applied to relationships
+
+An edge may carry an `evidence` citation (§3) naming where the relationship is realized. The
+resolver checks it with the **same** `resolve()`, the same state machine, and the same exit
+rule (`MISSING`/`AMBIGUOUS` block). Edge state is the **worst** of its anchors, matching
+`RegionAnchor` semantics. `doc` is SKIPPED; `config` is path-checked only; an uncited edge
+reports `UNEVIDENCED` and never blocks.
+
+**Why a citation and not a `verify: "call" | "none"` flag.** A flag asserts a property of the
+*checking process*, so nothing in the repo can contradict it — an author who lied is
+indistinguishable from a checker that is blind, and the field would be the first **authored
+input to a gate** in a system where every other derived field exists precisely because authored
+values drift. A citation asserts a property of the *code*, which the resolver can falsify. This
+is the same upgrade §3 made when it replaced `lines: "40-130"` with a symbol anchor.
+
+**Resolution state is never stored.** Anchor `bodyHash`/`sigHash` are baselines written by
+`--write`; the verdict is computed at check time and reported. Persisting it would put a
+field that changes on nearly every PR into the agent's only write surface, producing merge
+conflicts on changes that never touched the architecture — and §10.8's silent-rewrite hazard
+applies to any machine write into `model.json`.
+
+**Known gap — composition roots.** `extract.js` emits only top-level declarations, so a file of
+top-level statements (CLI entry points, `main()`, DI wiring) yields **zero symbols**. Edges
+realized there cannot anchor their call site and honestly fall back to `doc`. On archmap's own
+model this is 2 of 5 edges. Closing it needs a synthetic per-file `<module>` symbol — a
+`SymbolAnchor.kind` this spec already declares but the extractor cannot yet emit.
+
 ---
 
 ## 10. What grounding cannot catch (don't oversell "live")
@@ -307,8 +355,24 @@ choosing the queue cadence.
 5. **THE KILLER — grounding verifies the node, never the edge.** `Auth.validate` can sit
    byte-identical and CLEAN while someone deletes the `Gateway → auth` call or adds a
    `Gateway → UserStore` call the model denies. Every node passes; the architecture is a lie.
-   Edges are where most real drift lives. Catching it needs call/import-graph extraction — a
-   separate, heavier analysis — and even then it sees only *static* calls.
+   Edges are where most real drift lives.
+
+   **Partially addressed (2026-08-25) by edge citations (§9.1) — read the scope carefully.**
+   A cited edge names the symbols that realize it, so *deleting the call* now surfaces:
+   the call-site symbol's body changes and the edge goes CHANGED (verified on this repo —
+   removing the `layoutView` call from `render` moved `render-core → layout` from CLEAN to
+   CHANGED while `layoutView` itself stayed intact). What this does **not** close:
+   - **The undeclared direction is still invisible.** Adding a `Gateway → UserStore` call the
+     model denies is caught by nothing. That needs call/import-graph extraction (§11).
+   - **A citation is only as good as its author.** It proves the cited code still exists and is
+     unchanged, not that it implements the relationship. Same epistemic status as any node's
+     `grounding`, reviewable once at authoring time.
+   - **CHANGED is low-precision.** It fires on *any* edit to the cited symbol, not just call
+     deletion — §10.2 applies unchanged, which is why CHANGED reports and never blocks.
+   - **Composition roots degrade to `doc`** (§9.1), which is checked by nothing.
+
+   Catching the rest needs call/import-graph extraction — a separate, heavier analysis — and
+   even then it sees only *static* calls.
 6. **Polyglot + infra is where it falls apart — and that's the target stack.** Rust/Python/
    TS/Java = four extractors at four quality levels. `infra`/`workload` nodes live in
    Terraform and k8s YAML where the closest thing to a symbol is a resource address with its
@@ -321,20 +385,45 @@ choosing the queue cadence.
 
 ---
 
-## 11. Edge truth — the wedge (mostly unbuilt)
+## 11. Edge truth — partially built
 
 The most valuable drift signal is the one symbol grounding structurally cannot produce.
-Verifying that the code actually has the relationships the model declares needs an
+**Edge citations (§9.1) build the half that is tractable:** an authored claim about where a
+relationship lives, falsified by the existing resolver. What remains unbuilt is the
+*discovery* half — finding relationships the code has and the map denies — which needs an
 import/call-graph extracted per language and reconciled against `edges`. Even a perfect
 static call graph misses the edges that dominate an agent platform: HTTP, message bus,
 queue, and DI-resolved dispatch are invisible to it. A real edge-truth engine would combine
 static extraction with runtime signals (OpenTelemetry spans, access logs) to confirm
 declared transports.
 
-This is the part nobody does well, the part that would make archmap more than internal
-tooling, and the part to decide on *before* gold-plating the node resolver. Build the node
-resolver because it's tractable and useful — but don't let its green checks convince you the
-map is honest, only that the boxes are.
+**Why the static reconciler is deferred, with measurements (2026-08-25).** A reflexion-model
+engine (extract the graph, reconcile against `edges`) was designed and rejected:
+
+| | measured |
+|---|---|
+| reconcilable dependencies on this repo | **1 of 69** extracted (1.4%) |
+| first-party specifiers resolved on a normal TS app | **0 of 112** (79% behind `tsconfig` `paths`, 0 with extensions) |
+| symbol index that was build output on one repo | **94%** |
+| bootstrap-generated corpus | 3 containers, **1 component**, **0 verifiable edge pairs** |
+
+Three structural objections outlive any implementation effort. **Circularity:** reconciliation
+carries information only when the model is authored *independently* of the extracted graph, and
+archmap's premise is an agent that authors after reading the code — so confirmation is
+near-tautological at t=0 and a baseline diff at t>0. **The level carve-out inverts the
+technique:** scoping to L3 ("an edge means a call", §4) discards L1/L2, which are the
+independently-authored edges where reconciliation would have carried signal. **Incompatibility
+with bootstrap:** `EDGE_NOT_LEAF` means a drilled container cannot be an edge endpoint, while an
+undrilled one carries `region:{anchors:[]}` and has no symbols — so every edge in a
+bootstrap-generated model would be unverifiable by construction.
+
+Citations do not foreclose that engine; they enable a better version. Once edges carry anchors,
+a later pass can **propose** citations and **corroborate** them ("you cited `X`, but nothing in
+this scope references `X`") — non-circular, because an independently authored claim is being
+contradicted. Revisit with a real corpus, not on this repo.
+
+Don't let a green check convince you the map is honest. Cited edges are *checkable*, never
+*proven*; uncited ones are unchecked; and the undeclared direction is unwatched entirely.
 
 ---
 
@@ -353,5 +442,18 @@ map is honest, only that the boxes are.
    edges in `model.json` have no backing call), and §11's transport blind spot (HTTP/bus/DI)
    guts the signal for the polyglot target it's ostensibly for. The valuable form is
    runtime-backed (OpenTelemetry spans / access logs) and should be decided against a real
-   target system, not archmap itself. §§10–11 stay as the analysis behind this hold. Current
-   shipped scope is steps 1–2: the artifact chain plus the node-freshness resolver.
+   target system, not archmap itself. §§10–11 stay as the analysis behind this hold.
+
+   **Amendment (2026-08-25): the deferral held; edge citations shipped instead.** An attempt to
+   reverse the 2026-06-25 decision was tested against measurement and failed — the reversal's
+   central argument (that `packages/bootstrap` would produce densely grounded components) is
+   false: bootstrap's ≤7-export drill rule yields 3 containers and **1 component** on this repo,
+   and `EDGE_NOT_LEAF` makes bootstrap edges unverifiable by construction. The June reasoning
+   stands and §11 records the numbers.
+
+   What shipped is the *other* half: **edge citations** (§9.1) — authored, falsifiable claims
+   about where a relationship is realized, checked by the existing resolver with no new package,
+   no new dependency, and no new gate. Honest scope on this repo: **1 of 5 edges machine-checked**
+   (2 are `person` endpoints, 2 are composition roots). Static reconciliation stays deferred.
+
+   Current shipped scope is steps 1–2 plus edge citations.

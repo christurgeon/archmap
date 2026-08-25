@@ -74,12 +74,12 @@
         },
         "resolved": {
           "path": "packages/schema/index.js",
-          "startLine": 58,
-          "endLine": 68,
+          "startLine": 64,
+          "endLine": 74,
           "bodyHash": "f3ff0023a56ebe3765dc8b1fc51cc64c13b6d9bb65f8afcb81a7650e5d75f61c",
-          "resolvedAt": "2026-06-24T04:09:26.561Z"
+          "resolvedAt": "2026-08-25T00:00:00Z"
         },
-        "lines": "58-68"
+        "lines": "64-74"
       }
     },
     {
@@ -178,27 +178,71 @@
     {
       "from": "agent",
       "to": "schema-ops",
-      "label": "edits model"
+      "label": "edits model",
+      "evidence": {
+        "kind": "doc",
+        "path": "spec.md",
+        "anchors": [],
+        "note": "person endpoint: an agent edits through the ops. Not call-verifiable at any level."
+      }
     },
     {
       "from": "schema-ops",
       "to": "validate-core",
-      "label": "gated by"
+      "label": "gated by",
+      "evidence": {
+        "kind": "doc",
+        "path": "packages/validate/validate.mjs",
+        "anchors": [],
+        "note": "realized in validate.mjs top-level wiring: schema-authored models are gated by validate(). No extractable symbol to anchor (design §3.1)."
+      }
     },
     {
       "from": "validate-core",
       "to": "render-core",
-      "label": "unblocks"
+      "label": "unblocks",
+      "evidence": {
+        "kind": "doc",
+        "path": "packages/render/render.mjs",
+        "anchors": [],
+        "note": "realized in render.mjs top-level wiring: validate() gates the render() call. No extractable symbol to anchor (design §3.1)."
+      }
     },
     {
       "from": "render-core",
       "to": "layout",
-      "label": "calls"
+      "label": "calls",
+      "evidence": {
+        "kind": "call",
+        "path": "packages/render/html.js",
+        "anchors": [
+          {
+            "fqn": "render",
+            "kind": "fn",
+            "path": "packages/render/html.js",
+            "bodyHash": "a71747c08eaa0fdef5a369499049a5bb0daee2126676f6087859e7961c76c195",
+            "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
+          },
+          {
+            "fqn": "layoutView",
+            "kind": "fn",
+            "path": "packages/render/layout.js",
+            "bodyHash": "8b79db990dbc7bcddaab525b3ea5b732ffeaad7e02221b0a388331b6cf6fdb62",
+            "sigHash": "24a9f841e12befec5abc145759da871f982000b7d239d104c369c30df4780441"
+          }
+        ]
+      }
     },
     {
       "from": "viewer",
       "to": "render-core",
-      "label": "reads output"
+      "label": "reads output",
+      "evidence": {
+        "kind": "doc",
+        "path": "spec.md",
+        "anchors": [],
+        "note": "person endpoint: an engineer reads the rendered map. Not call-verifiable at any level."
+      }
     }
   ],
   "mappings": [

@@ -1,7 +1,8 @@
 # archmap edge citations — design
 
-- **Status:** approved design, hardened by three independent adversarial reviews (2026-08-25),
-  pre-implementation
+- **Status:** implemented 2026-08-25. Design hardened by three independent adversarial reviews.
+  One correction found during implementation (per-anchor `path`, §3). Dogfood result differed
+  from the §8 estimate — see the note there.
 - **Scope:** `edges[].evidence` — declared, falsifiable citations checked by the **existing**
   grounding resolver. No new package, no new dependency, no new gate.
 - **Supersedes:** the static reflexion/import-graph engine explored earlier the same day and
@@ -61,10 +62,15 @@ type EvidenceKind =
 
 interface EdgeEvidence {
   kind: EvidenceKind;
-  path: string;             // last-known HINT, not identity (same contract as Grounding.path)
+  path: string;             // primary location; DEFAULT path for anchors that omit one
   anchors: SymbolAnchor[];  // >= 1 for call/import/test; empty for config/doc
   note?: string;            // REQUIRED when kind === "doc"
 }
+
+// SymbolAnchor gains an optional per-anchor `path`. Discovered during implementation:
+// an edge's caller and callee live in DIFFERENT files by construction, so one
+// evidence-level path cannot serve both — the callee falls through to a repo-wide
+// lookup and resolves MOVED instead of CLEAN.
 
 interface Edge {
   from: string;
@@ -242,6 +248,14 @@ explicitly is the honest outcome rather than a gap.
 This distribution is itself a finding: on a repo this small, the composition root is where two
 of five architectural relationships live, and it is invisible to symbol extraction. Expect the
 same shape on real repos.
+
+**Correction after implementation — the two callee-only rows became `doc`.** Anchoring the two
+endpoint symbols (`validate`, `render`) would merely restate what node `grounding` already
+asserts about those nodes; it adds no claim about the *relationship*, because neither symbol is
+the call site. A citation that carries no information beyond existing grounding is decoration,
+so the honest citation for both is `doc` naming the wiring file. **Actual dogfood result: 1 of 5
+edges machine-checked, 4 `doc`** — 2 irreducible (`person` endpoints), 2 fixable by the
+`<module>` symbol in §9.5. This is worse than the estimate above and is reported as measured.
 
 ## 9. What this does NOT do
 

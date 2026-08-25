@@ -6,6 +6,12 @@ export const KINDS = [...LOGICAL_KINDS, ...DEPLOY_KINDS];
 export const AXES = ["logical", "deploy"];
 export const GROUNDABLE_KINDS = ["component", "store", "infra", "workload", "container"];
 
+// Edge evidence (spec §3): a citation is a claim about WHERE a relationship is realized,
+// so the resolver can falsify it. The symbol kinds carry anchors and are resolver-checked;
+// `config` is path-checked only; `doc` is never machine-checked and so must justify itself.
+export const EVIDENCE_KINDS = ["call", "import", "test", "config", "doc"];
+export const SYMBOL_EVIDENCE_KINDS = ["call", "import", "test"];
+
 export function kindAxis(kind) {
   return DEPLOY_KINDS.includes(kind) ? "deploy" : "logical";
 }
@@ -122,6 +128,33 @@ export function setEdgeLabel(model, from, to, label) {
   const e = model.edges.find((x) => x.from === from && x.to === to);
   if (!e) throw new Error(`setEdgeLabel: no edge ${from}->${to}`);
   e.label = label;
+}
+
+// Cite where an edge is realized. Anchors are SymbolAnchors resolved by @archmap/resolve;
+// resolution state is deliberately NOT stored here (spec §3.2) — only the authored claim is.
+export function setEdgeEvidence(model, from, to, evidence) {
+  const e = model.edges.find((x) => x.from === from && x.to === to);
+  if (!e) throw new Error(`setEdgeEvidence: no edge ${from}->${to}`);
+  if (evidence === null) {
+    delete e.evidence;
+    return null;
+  }
+  const { kind, path, anchors = [], note } = evidence;
+  if (!EVIDENCE_KINDS.includes(kind)) throw new Error(`setEdgeEvidence: unknown kind: ${kind}`);
+  if (!path) throw new Error("setEdgeEvidence: path required");
+  if (SYMBOL_EVIDENCE_KINDS.includes(kind) && anchors.length === 0) {
+    throw new Error(`setEdgeEvidence: anchors required for kind ${kind}`);
+  }
+  for (const a of anchors) {
+    if (!a || !a.fqn) throw new Error("setEdgeEvidence: anchor needs fqn");
+  }
+  // `doc` is the one kind no checker can falsify, so the note is load-bearing — same trade
+  // as RegionAnchor.note (spec §3): when the machine can't check, the human must say why.
+  if (kind === "doc" && !note) throw new Error("setEdgeEvidence: note required for kind doc");
+  const ev = { kind, path, anchors: SYMBOL_EVIDENCE_KINDS.includes(kind) ? anchors : [] };
+  if (note !== undefined) ev.note = note;
+  e.evidence = ev;
+  return ev;
 }
 
 export function addMapping(model, logical, deploy, label) {

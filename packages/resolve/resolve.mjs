@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
 import { loadModel, saveModel } from "@archmap/schema";
 import { walkSourceFiles } from "./repo-files.js";
 import { buildIndex } from "./symbol-index.js";
-import { resolve, resolveRegion } from "./resolve.js";
+import { resolve, resolveRegion, resolveEdgeEvidence } from "./resolve.js";
 
 const args = process.argv.slice(2);
 const modelPath = args.find((a) => !a.startsWith("--"));
@@ -45,19 +46,51 @@ for (const node of model.nodes) {
   }
 }
 
+// Edge citations: falsify the claim that a relationship is realized where the model says.
+// Reported separately from node drift — a green box set and a green edge set are different
+// guarantees, and collapsing them is exactly the overselling spec §10 warns against.
+const edgeRows = [];
+for (const e of model.edges) {
+  const r = resolveEdgeEvidence(e.evidence, index, {
+    pathExists: (p) => existsSync(join(repoRoot, p)),
+  });
+  const key = `${e.from}->${e.to}`;
+  const detail = e.evidence
+    ? `${e.evidence.kind} [${(e.evidence.anchors ?? []).map((a) => a.fqn).join(", ") || e.evidence.path}]`
+    : "(no citation)";
+  edgeRows.push({ state: r.state, line: `  ${key}  ${detail}` });
+  if (BLOCKING.has(r.state)) blocked = true;
+
+  if (write) {
+    for (const p of r.parts) {
+      if (p.state === "UNBASELINED" && p.hit) {
+        p.anchor.bodyHash = p.hit.bodyHash;
+        if (p.hit.sigHash) p.anchor.sigHash = p.hit.sigHash;
+      }
+    }
+  }
+}
+
 if (write) saveModel(modelPath, model);
 
-const byState = new Map();
-for (const row of rows) {
-  if (!byState.has(row.state)) byState.set(row.state, []);
-  byState.get(row.state).push(row.line);
+function report(title, list, order) {
+  const byState = new Map();
+  for (const row of list) {
+    if (!byState.has(row.state)) byState.set(row.state, []);
+    byState.get(row.state).push(row.line);
+  }
+  const ordered = [...order, ...byState.keys()].filter((s, i, a) => a.indexOf(s) === i);
+  console.log(`### ${title}`);
+  for (const state of ordered) {
+    const lines = byState.get(state);
+    if (!lines || !lines.length) continue;
+    console.log(`== ${state} (${lines.length}) ==`);
+    for (const l of lines) console.log(l);
+  }
+  const summary = ordered.filter((s) => byState.get(s)?.length).map((s) => `${byState.get(s).length} ${s}`);
+  console.log("--- " + (summary.length ? summary.join(", ") : "nothing to check"));
 }
-const ordered = [...STATE_ORDER, ...byState.keys()].filter((s, i, a) => a.indexOf(s) === i);
-for (const state of ordered) {
-  const lines = byState.get(state);
-  if (!lines || !lines.length) continue;
-  console.log(`== ${state} (${lines.length}) ==`);
-  for (const l of lines) console.log(l);
-}
-console.log("--- " + ordered.filter((s) => byState.get(s)?.length).map((s) => `${byState.get(s).length} ${s}`).join(", "));
+
+report("nodes", rows, STATE_ORDER);
+report("edges", edgeRows, [...STATE_ORDER, "UNEVIDENCED"]);
 process.exit(blocked ? 1 : 0);

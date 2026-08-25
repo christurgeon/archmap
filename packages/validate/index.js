@@ -1,4 +1,7 @@
-import { KINDS, AXES, kindAxis, getNode, ancestorsOf, isLeaf, childrenOf, GROUNDABLE_KINDS } from "@archmap/schema";
+import {
+  KINDS, AXES, kindAxis, getNode, ancestorsOf, isLeaf, childrenOf, GROUNDABLE_KINDS,
+  EVIDENCE_KINDS, SYMBOL_EVIDENCE_KINDS,
+} from "@archmap/schema";
 
 const EDGE_LABEL_MAX_WORDS = 3;
 const FANOUT_SOFT = 7;
@@ -83,6 +86,31 @@ export function validate(model) {
     else edgeKeys.add(key);
     if (wordCount(e.label) > EDGE_LABEL_MAX_WORDS) {
       err("EDGE_LABEL_BUDGET", `edge label exceeds ${EDGE_LABEL_MAX_WORDS} words`, key);
+    }
+
+    // Evidence is optional (an unevidenced edge is an honest model fact, not an error) —
+    // but a citation that IS present must be well-formed enough for the resolver to falsify.
+    if (e.evidence) {
+      const ev = e.evidence;
+      if (!EVIDENCE_KINDS.includes(ev.kind)) {
+        err("EDGE_EVIDENCE_BAD_KIND", `unknown evidence kind ${ev.kind}`, key);
+      }
+      if (!ev.path) err("EDGE_EVIDENCE_NO_PATH", "evidence requires a path", key);
+      if (SYMBOL_EVIDENCE_KINDS.includes(ev.kind) && (ev.anchors ?? []).length === 0) {
+        err("EDGE_EVIDENCE_NO_ANCHORS", `evidence kind ${ev.kind} requires anchors`, key);
+      }
+      for (const a of ev.anchors ?? []) {
+        if (!a || !a.fqn || !a.kind) {
+          err("EDGE_EVIDENCE_BAD_ANCHOR", "evidence anchor requires fqn and kind", key);
+        }
+      }
+      // `doc` is unfalsifiable by machine, so the note is the only honesty available.
+      if (ev.kind === "doc" && !ev.note) {
+        err("EDGE_EVIDENCE_DOC_NEEDS_NOTE", "doc evidence requires a note", key);
+      }
+      if (ev.resolved || ev.lines) {
+        warn("EDGE_EVIDENCE_RESOLVED_AUTHORED", "evidence resolution is derived output, not input", key);
+      }
     }
   }
 

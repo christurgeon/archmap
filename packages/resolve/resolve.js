@@ -30,8 +30,38 @@ export function resolve(anchor, path, index) {
   return { state: "MISSING" };
 }
 
-const SEVERITY = ["CLEAN", "UNBASELINED", "MOVED", "CHANGED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"];
+export const SEVERITY = ["CLEAN", "UNBASELINED", "MOVED", "CHANGED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"];
 const CLEAN_ENOUGH = new Set(["CLEAN", "UNBASELINED"]);
+
+export function worstState(states) {
+  return states.reduce((w, s) => (SEVERITY.indexOf(s) > SEVERITY.indexOf(w) ? s : w), "CLEAN");
+}
+
+// Edge citations (design §6). A citation claims WHERE a relationship is realized; this
+// falsifies that claim with the same machinery as node grounding — same states, same ladder.
+// Resolution is returned, never stored (design §3.2): the model holds the claim, not the verdict.
+export function resolveEdgeEvidence(evidence, index, opts = {}) {
+  if (!evidence) return { state: "UNEVIDENCED", parts: [] };
+
+  // `doc` is a reviewable assertion, not a checkable one. Saying so beats a fake green.
+  if (evidence.kind === "doc") return { state: "SKIPPED", parts: [] };
+
+  if (evidence.kind === "config") {
+    // Path existence is all a config citation can claim. Without a predicate to ask, the
+    // checker reports SKIPPED rather than inventing a pass — blindness must not read as health.
+    if (!opts.pathExists) return { state: "SKIPPED", parts: [] };
+    return { state: opts.pathExists(evidence.path) ? "CLEAN" : "MISSING", parts: [] };
+  }
+
+  // A call edge's anchors live in DIFFERENT files by construction (caller here, callee there),
+  // so each anchor may carry its own path; evidence.path is the fallback for same-file citations.
+  const parts = (evidence.anchors ?? []).map((a) => {
+    const r = resolve(a, a.path ?? evidence.path, index);
+    // carry the anchor + hit so --write can baseline an UNBASELINED anchor in place
+    return { fqn: a.fqn, state: r.state, anchor: a, hit: r.hit ?? r.to ?? null };
+  });
+  return { state: worstState(parts.map((p) => p.state)), parts };
+}
 
 export function resolveRegion(region, path, index, opts = {}) {
   const hashes = opts.hashes ?? {};

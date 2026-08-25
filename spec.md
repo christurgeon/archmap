@@ -28,10 +28,12 @@ worth your time:
    identity, dual hash, RegionAnchor, never-auto-bump). Do **not** gold-plate the heavy
    content-hash rename-recovery index before deciding you're even in this business. (§9)
 3. **Edge-truth verification — does the code actually have the relationships the model
-   claims.** Mostly unbuilt, genuinely hard, and the **only defensible wedge**. Symbol
-   grounding structurally cannot produce this signal, and it's where architecture maps
-   actually go fiction. Decide whether you're building node-freshness or edge-truth before
-   sinking effort into layer 2. (§10, §11)
+   claims.** Genuinely hard, and the **only defensible wedge**. Symbol grounding structurally
+   cannot produce this signal, and it's where architecture maps actually go fiction.
+   **Half-built (2026-08-25):** edge *citations* (§9.1) ship the authored-claim half — an
+   edge names where it is realized and the resolver falsifies it. The *discovery* half —
+   finding relationships the code has and the map denies — remains unbuilt, and §11 records
+   the measurements behind deferring it. (§10, §11)
 
 The through-line: a green grounding check means the **boxes** are honest, never that the
 **map** is. Maps rot at the relationships, not the boxes.

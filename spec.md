@@ -136,7 +136,10 @@ interface SymbolAnchor {
 }
 
 interface RegionAnchor {
-  anchors: string[];       // the several fqns the concern spreads across
+  anchors: SymbolAnchor[]; // the several symbols the concern spreads across.
+                           // Bare `string` fqns are still accepted and normalized, but they
+                           // carry no baseline — and an anchor with no bodyHash resolves
+                           // UNBASELINED, which is NOT clean. See §10.1.
   note: string;            // REQUIRED: why this isn't a single symbol — forces the honesty
 }
 
@@ -209,6 +212,9 @@ addMapping(logical, deploy, label) | removeMapping(logical, deploy)
 - Mappings: logical endpoint is logical, deploy endpoint is deploy.
 - Fan-out within limits; groundable leaves carry an anchor (symbol/region/iac).
 - **`lines` authored by hand → warning** (it is derived output, not input).
+- Regions: `note` required, `anchors` must be an array, each anchor needs an `fqn`. An
+  **empty** `anchors` array is legal but **warns** — it is a placeholder that verifies
+  nothing, and it must not read as a passing grounding.
 - Edge evidence, **when present**, is well-formed: known `kind`, non-empty `path`, anchors for
   the symbol kinds, `fqn`+`kind` on each anchor, and a `note` on `doc`. Evidence itself stays
   **optional** — requiring it would push authors toward fabricated citations, which is the
@@ -356,6 +362,15 @@ Verified on this repo: removing the `validate` import from `render.mjs` moves
    and weaker (it can't tell you the *concern* drifted, only that a constituent symbol did).
    Symbol grounding is high-fidelity for the minority of leaves that are one symbol and
    degrades to "a bag of file pointers" for the rest.
+
+   **Fixed 2026-08-25 — regions were reporting CLEAN unconditionally.** Two independent
+   causes, both verified: an empty `anchors` array made `[].every()` vacuously true, and the
+   resolver never passed hashes, so every anchor came back UNBASELINED and was folded into
+   "clean enough". A region leaf was green as long as its names existed — and green even with
+   *no names at all*, which is exactly the shape `packages/bootstrap` emits for every
+   undrilled container. Anchors are now `SymbolAnchor`s carrying baselines, an empty region
+   reports `UNANCHORED` and warns, and UNBASELINED is no longer treated as clean. The
+   *modelling* limitation above is unchanged; only the false green is gone.
 2. **`bodyHash` is over- and under-sensitive at once, and no hash fixes it.** Normalize hard
    and you go silent on the changes that matter most — a flipped boolean, a swapped queue
    name in a string literal, a changed timeout. Normalize lightly and CHANGED is constant

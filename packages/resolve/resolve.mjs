@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
-import { loadModel, saveModel } from "@archmap/schema";
+import { loadModel, saveModel, normalizeRegionAnchors } from "@archmap/schema";
 import { walkSourceFiles } from "./repo-files.js";
 import { buildIndex } from "./symbol-index.js";
 import { resolve, resolveRegion, resolveEdgeEvidence, rebaseline } from "./resolve.js";
@@ -21,7 +21,7 @@ const index = await buildIndex(walkSourceFiles(repoRoot));
 
 // Collect one row per grounded node, then print GROUPED BY STATE — the batched confirm queue (§9 amendment):
 // a human reads "MOVED (3)", "RENAMED (1)", ... and confirms a batch, rather than scanning interleaved lines.
-const STATE_ORDER = ["MISSING", "AMBIGUOUS", "RENAMED?", "RENAMED", "CHANGED", "MOVED", "UNBASELINED", "CLEAN", "SKIPPED"];
+const STATE_ORDER = ["MISSING", "AMBIGUOUS", "RENAMED?", "RENAMED", "CHANGED", "MOVED", "UNBASELINED", "UNANCHORED", "CLEAN", "SKIPPED"];
 const BLOCKING = new Set(["MISSING", "AMBIGUOUS"]);
 const rows = [];
 let blocked = false;
@@ -47,8 +47,26 @@ for (const node of model.nodes) {
     // anchored on a common name like `model` (4 files here) silently owned every match.
     // Constrain to the leaf's own path, exactly as symbol anchors are.
     const r = resolveRegion(g.region, g.path, index);
-    rows.push({ state: r.state, line: `  ${node.id}  region [${g.region.anchors.join(", ")}]` });
+    const names = normalizeRegionAnchors(g.region.anchors).map((a) => a.fqn);
+    const detail = names.length ? `region [${names.join(", ")}]` : "region (no anchors — nothing to check)";
+    rows.push({ state: r.state, line: `  ${node.id}  ${detail}` });
     if (BLOCKING.has(r.state)) blocked = true; // regions inherit the block rule (documented extension)
+
+    // Region anchors baseline like every other anchor. Before this they carried no hashes
+    // at all, so a region reported CLEAN however far its bodies had drifted.
+    if (write || confirm) {
+      g.region.anchors = normalizeRegionAnchors(g.region.anchors);
+      for (const p of r.parts) {
+        const stored = g.region.anchors.find((a) => a.fqn === p.fqn);
+        if (!stored) continue;
+        const hit = p.hit ?? null;
+        if (write && p.state === "UNBASELINED" && hit) {
+          stored.bodyHash = hit.bodyHash;
+          if (hit.sigHash) stored.sigHash = hit.sigHash;
+        }
+        if (confirm && rebaseline(stored, p.state, hit)) confirmed++;
+      }
+    }
   } else {
     rows.push({ state: "SKIPPED", line: `  ${node.id}  (iac/dashboard — not symbol-resolvable in Phase 2)` });
   }

@@ -16,6 +16,14 @@ export function kindAxis(kind) {
   return DEPLOY_KINDS.includes(kind) ? "deploy" : "logical";
 }
 
+// RegionAnchor.anchors was `string[]`, which left nowhere to put a bodyHash — so region
+// leaves resolved UNBASELINED and reported CLEAN however far their bodies had drifted.
+// They are SymbolAnchors now, the same shape edge citations use. Bare strings are still
+// accepted so existing models (and bootstrap's `anchors: []`) keep working unchanged.
+export function normalizeRegionAnchors(anchors) {
+  return (anchors ?? []).map((a) => (typeof a === "string" ? { fqn: a, kind: "fn" } : a));
+}
+
 export function createModel({ name, version, snapshot }) {
   return { meta: { name, version, snapshot }, nodes: [], edges: [], mappings: [] };
 }
@@ -101,7 +109,8 @@ export function setGrounding(model, id, { repo, path, symbol, region, iac, dashb
   const node = requireNode(model, id);
   const g = { repo: repo ?? node.grounding?.repo, path };
   if (symbol !== undefined) g.symbol = symbol;
-  if (region !== undefined) g.region = region;
+  // store the canonical anchor shape so new authoring never writes the legacy string form
+  if (region !== undefined) g.region = { ...region, anchors: normalizeRegionAnchors(region.anchors) };
   if (iac !== undefined) g.iac = iac;
   if (dashboard !== undefined) g.dashboard = dashboard;
   node.grounding = g;

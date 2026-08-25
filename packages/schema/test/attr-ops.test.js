@@ -36,7 +36,9 @@ test("setGrounding never writes lines or resolved", () => {
   const g = setGrounding(m, "h", { repo: "r", path: "p", region: { anchors: ["a", "b"], note: "spread out" } });
   assert.equal("lines" in g, false);
   assert.equal("resolved" in g, false);
-  assert.deepEqual(g.region.anchors, ["a", "b"]);
+  // bare strings are normalized to SymbolAnchors so region anchors can carry a baseline;
+  // without somewhere to put a bodyHash, a region resolved CLEAN however far it had drifted
+  assert.deepEqual(g.region.anchors, [{ fqn: "a", kind: "fn" }, { fqn: "b", kind: "fn" }]);
 });
 
 test("attribute ops throw on missing node", () => {

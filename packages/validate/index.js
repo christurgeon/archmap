@@ -52,6 +52,24 @@ export function validate(model) {
       if (n.grounding.lines) {
         warn("LINES_AUTHORED", "lines is derived output, not input", n.id);
       }
+      const region = n.grounding.region;
+      if (region) {
+        // The note is what makes a region honest: it states why this concern is not one
+        // symbol. Same role as an edge's `doc` note — required exactly where the machine
+        // cannot check the claim itself.
+        if (!region.note) err("REGION_NEEDS_NOTE", "region requires a note explaining why this is not one symbol", n.id);
+        if (!Array.isArray(region.anchors)) {
+          err("REGION_BAD_ANCHORS", "region.anchors must be an array", n.id);
+        } else {
+          for (const a of region.anchors) {
+            const fqn = typeof a === "string" ? a : a?.fqn;
+            if (!fqn) err("REGION_BAD_ANCHOR", "region anchor requires an fqn", n.id);
+          }
+          // Legal (bootstrap emits it for undrilled containers) but it checks nothing,
+          // and a region that checks nothing must not read as a passing grounding.
+          if (region.anchors.length === 0) warn("REGION_EMPTY", "region has no anchors — grounding verifies nothing", n.id);
+        }
+      }
     }
   }
 

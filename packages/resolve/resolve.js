@@ -1,3 +1,5 @@
+import { normalizeRegionAnchors } from "@archmap/schema";
+
 export function classify(anchor, hit) {
   if (!anchor.bodyHash) return { state: "UNBASELINED", hit };
   return { state: anchor.bodyHash === hit.bodyHash ? "CLEAN" : "CHANGED", hit };
@@ -31,7 +33,6 @@ export function resolve(anchor, path, index) {
 }
 
 export const SEVERITY = ["CLEAN", "UNBASELINED", "MOVED", "CHANGED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"];
-const CLEAN_ENOUGH = new Set(["CLEAN", "UNBASELINED"]);
 
 // The confirm half of §9's batched queue. CHANGED means "identity stable, body moved" — a
 // human reviews it and says yes. Nothing else qualifies: MOVED/RENAMED would re-anchor the
@@ -75,12 +76,23 @@ export function resolveEdgeEvidence(evidence, index, opts = {}) {
 }
 
 export function resolveRegion(region, path, index, opts = {}) {
+  // Anchors carry their own hashes now (see normalizeRegionAnchors). `opts.hashes` remains
+  // as a fallback for callers holding baselines outside the anchor.
   const hashes = opts.hashes ?? {};
-  const parts = region.anchors.map((fqn) => {
-    const anchor = { fqn, kind: "fn", bodyHash: hashes[fqn] };
-    return { fqn, state: resolve(anchor, path, index).state };
+  const anchors = normalizeRegionAnchors(region?.anchors);
+
+  // A region with no anchors claims nothing, so it cannot be CLEAN. It used to be, because
+  // [].every() is vacuously true — a green check over an empty set. Bootstrap emits exactly
+  // this shape for every undrilled container, so the distinction is load-bearing.
+  if (anchors.length === 0) return { state: "UNANCHORED", parts: [] };
+
+  const parts = anchors.map((a) => {
+    const anchor = { ...a, bodyHash: a.bodyHash ?? hashes[a.fqn] };
+    const r = resolve(anchor, a.path ?? path, index);
+    return { fqn: a.fqn, state: r.state, anchor, hit: r.hit ?? r.to ?? null };
   });
-  const allClean = parts.every((p) => CLEAN_ENOUGH.has(p.state));
-  const worst = parts.reduce((w, p) => (SEVERITY.indexOf(p.state) > SEVERITY.indexOf(w) ? p.state : w), "CLEAN");
-  return { state: allClean ? "CLEAN" : worst, parts };
+  // UNBASELINED is no longer folded into CLEAN: "we never recorded what this looked like"
+  // is not the same claim as "it is unchanged", and reporting it as CLEAN is how a region
+  // stayed green through an arbitrary rewrite.
+  return { state: worstState(parts.map((p) => p.state)), parts };
 }

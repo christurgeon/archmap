@@ -301,6 +301,13 @@ automation never makes drift invisible *without* per-PR friction. Whether you ca
 per-PR surfacing at all is a function of churn rate — measure it on your own repos before
 choosing the queue cadence.
 
+**Implemented as `resolve --confirm`.** It accepts CHANGED bodies as the new baseline and
+touches nothing else — MOVED/RENAMED re-anchor a symbol and must stay explicit decisions, per
+the never-auto-bump rule above. Until this existed there was **no re-baseline path at all**:
+`--write` only writes CLEAN/UNBASELINED anchors, so a CHANGED node stayed CHANGED forever
+unless someone hand-edited `model.json`. That, not neglect, is why this repo carried stale
+CHANGED nodes from one render commit to the next — the tooling offered no way to clear them.
+
 ### 9.1 Edge citations — the same machinery, applied to relationships
 
 An edge may carry an `evidence` citation (§3) naming where the relationship is realized. The
@@ -322,11 +329,21 @@ field that changes on nearly every PR into the agent's only write surface, produ
 conflicts on changes that never touched the architecture — and §10.8's silent-rewrite hazard
 applies to any machine write into `model.json`.
 
-**Known gap — composition roots.** `extract.js` emits only top-level declarations, so a file of
-top-level statements (CLI entry points, `main()`, DI wiring) yields **zero symbols**. Edges
-realized there cannot anchor their call site and honestly fall back to `doc`. On archmap's own
-model this is 2 of 5 edges. Closing it needs a synthetic per-file `<module>` symbol — a
-`SymbolAnchor.kind` this spec already declares but the extractor cannot yet emit.
+**Composition roots — the `<module>` symbol.** A file of top-level statements (CLI entry
+points, `main()`, route registration, DI wiring) contains no declarations, so a
+declaration-only extractor sees nothing there — and that is exactly where wiring
+relationships are realized. `extract.js` therefore emits a synthetic per-file symbol with
+`fqn: "<module>"` and `kind: "module"`, hashed over the file's **wiring statements only**
+(imports, re-exports, top-level calls). Declaration bodies are excluded: those carry their own
+`bodyHash`, and folding them in would make any edit anywhere in the file trip every edge
+anchored to that module.
+
+The module hash uses a **name-preserving** canonicalization, unlike `bodyHash`. Stripping
+identifiers is right for a function body (a local rename is not architectural drift) and wrong
+for wiring, where `validate(m)` versus `render(m)` *is* the relationship.
+
+Verified on this repo: removing the `validate` import from `render.mjs` moves
+`validate-core → render-core` to CHANGED and leaves the other edges CLEAN.
 
 ---
 
@@ -453,7 +470,8 @@ Don't let a green check convince you the map is honest. Cited edges are *checkab
 
    What shipped is the *other* half: **edge citations** (§9.1) — authored, falsifiable claims
    about where a relationship is realized, checked by the existing resolver with no new package,
-   no new dependency, and no new gate. Honest scope on this repo: **1 of 5 edges machine-checked**
-   (2 are `person` endpoints, 2 are composition roots). Static reconciliation stays deferred.
+   no new dependency, and no new gate. Honest scope on this repo: **3 of 5 edges machine-checked**
+   (the remaining 2 are `person` endpoints, which are not call-verifiable at any level).
+   Static reconciliation stays deferred.
 
    Current shipped scope is steps 1–2 plus edge citations.

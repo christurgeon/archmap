@@ -35,8 +35,9 @@ node --test --test-name-pattern="<regex>"              # tests matching a name
 
 node packages/validate/validate.mjs model.json         # the gate (run before relying on a model)
 node packages/render/render.mjs model.json archmap.html
-node packages/resolve/resolve.mjs model.json           # check grounding; exit 1 on MISSING/AMBIGUOUS
+node packages/resolve/resolve.mjs model.json           # check grounding + edge citations; exit 1 on MISSING/AMBIGUOUS
 node packages/resolve/resolve.mjs model.json --write   # establish baselines / write derived fields
+node packages/resolve/resolve.mjs model.json --confirm # accept CHANGED bodies as the new baseline (§9)
 ```
 
 CI runs `npm test` + validate on every PR, and resolve on PRs touching `packages/**` or `model.json`.
@@ -44,4 +45,5 @@ CI runs `npm test` + validate on every PR, and resolve on PRs touching `packages
 ## Working in this repo
 
 - Edit models only through `@archmap/schema`'s operations, then run validate. Don't write `model.json` fields ad hoc.
-- A green resolve check means the **boxes** are honest (symbols exist and are unchanged) — never that the **map** is. Edge truth is out of scope (spec §§10–11).
+- A green resolve check means the **boxes** are honest (symbols exist and are unchanged), and that **cited** edges still point at live code. It does not mean the map is true: uncited edges are unchecked, `doc` citations are checked by nothing, and relationships the code has but the model omits are invisible entirely (spec §§10.5, 11).
+- The index only sees what git tracks — exclusions come from `.gitignore`, plus tests and `.d.ts` by convention.

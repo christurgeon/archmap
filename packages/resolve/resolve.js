@@ -33,6 +33,17 @@ export function resolve(anchor, path, index) {
 export const SEVERITY = ["CLEAN", "UNBASELINED", "MOVED", "CHANGED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"];
 const CLEAN_ENOUGH = new Set(["CLEAN", "UNBASELINED"]);
 
+// The confirm half of §9's batched queue. CHANGED means "identity stable, body moved" — a
+// human reviews it and says yes. Nothing else qualifies: MOVED/RENAMED would re-anchor the
+// symbol, and doing that on a bulk confirm is precisely the silent-rewrite trap §9 forbids.
+// Returns whether it re-baselined, so the caller can report what it confirmed.
+export function rebaseline(anchor, state, hit) {
+  if (state !== "CHANGED" || !hit) return false;
+  anchor.bodyHash = hit.bodyHash;
+  if (hit.sigHash) anchor.sigHash = hit.sigHash;
+  return true;
+}
+
 export function worstState(states) {
   return states.reduce((w, s) => (SEVERITY.indexOf(s) > SEVERITY.indexOf(w) ? s : w), "CLEAN");
 }

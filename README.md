@@ -1,7 +1,7 @@
 # archmap
 
 [![node](https://img.shields.io/badge/node-%3E%3D22-3c873a?logo=node.js&logoColor=white)](https://nodejs.org)
-[![runtime deps](https://img.shields.io/badge/runtime%20deps-zero-2563eb)](#install-node--22)
+[![runtime deps](https://img.shields.io/badge/runtime%20deps-schema%2Fvalidate%2Frender%3A%20zero-2563eb)](#install-node--22)
 [![tests](https://img.shields.io/badge/tests-passing-3c873a)](packages)
 [![model](https://img.shields.io/badge/model-C4-8b5cf6)](spec.md)
 
@@ -15,9 +15,10 @@ The source of truth is `model.json`; the rendered HTML is a pure function of it.
 
 ## Install (Node >= 22)
 
-This repo has **zero runtime dependencies** — the only thing to install is a Node
-toolchain and the workspace symlinks. If Node is already present, just run
-`npm install`. Otherwise install Node first, via nvm (no sudo, user-scoped):
+`schema`, `validate`, and `render` have **zero runtime dependencies**. `resolve` needs
+tree-sitter WASM parsers (~55 MB in `node_modules`, pulled on `npm install`), so the
+artifact chain alone is dependency-free but grounding checks are not. If Node is already
+present, just run `npm install`. Otherwise install Node first, via nvm (no sudo, user-scoped):
 
 ```bash
 # 1. install nvm + Node LTS (skip if `node --version` already prints >= 22)
@@ -50,8 +51,8 @@ rm -rf "$HOME/.nvm"
 # then delete the nvm lines nvm appended to ~/.bashrc / ~/.zshrc (search for NVM_DIR)
 ```
 
-Because there are no third-party runtime deps, `node_modules` holds only workspace
-symlinks — deleting it is safe and instantly reversible with `npm install`.
+`node_modules` holds the workspace symlinks plus resolve's tree-sitter parsers (~55 MB).
+Deleting it is safe and instantly reversible with `npm install`.
 
 ## Grounding resolver (Phase 2)
 
@@ -60,6 +61,7 @@ symlinks — deleting it is safe and instantly reversible with `npm install`.
 ```bash
 node packages/resolve/resolve.mjs model.json            # check: report drift, exit 1 on MISSING/AMBIGUOUS
 node packages/resolve/resolve.mjs model.json --write     # establish baselines + write derived resolved/lines
+node packages/resolve/resolve.mjs model.json --confirm   # accept CHANGED bodies as the new baseline
 ```
 
 A green check means the **boxes** are honest (the symbols exist and are unchanged) — never that the **map** is. Edge truth (do the relationships in `edges` actually exist) is out of scope here (spec §§10–11).

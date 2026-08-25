@@ -253,9 +253,15 @@ same shape on real repos.
 endpoint symbols (`validate`, `render`) would merely restate what node `grounding` already
 asserts about those nodes; it adds no claim about the *relationship*, because neither symbol is
 the call site. A citation that carries no information beyond existing grounding is decoration,
-so the honest citation for both is `doc` naming the wiring file. **Actual dogfood result: 1 of 5
-edges machine-checked, 4 `doc`** — 2 irreducible (`person` endpoints), 2 fixable by the
-`<module>` symbol in §9.5. This is worse than the estimate above and is reported as measured.
+so the honest citation for both is `doc` naming the wiring file. **Dogfood result at implementation: 1 of 5
+edges machine-checked, 4 `doc`** — 2 irreducible (`person` endpoints), 2 blocked on the
+composition-root gap.
+
+**Resolved (same day) by the `<module>` symbol.** `extract.js` now emits a synthetic per-file
+symbol over wiring statements, so both composition-root edges anchor their real call site.
+**Final: 3 of 5 machine-checked**, the remaining 2 being `person` endpoints. Verified by
+removing the `validate` import from `render.mjs` — `validate-core → render-core` goes CHANGED
+and the other edges stay CLEAN.
 
 ## 9. What this does NOT do
 

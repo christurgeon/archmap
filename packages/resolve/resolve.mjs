@@ -4,12 +4,15 @@ import { existsSync } from "node:fs";
 import { loadModel, saveModel } from "@archmap/schema";
 import { walkSourceFiles } from "./repo-files.js";
 import { buildIndex } from "./symbol-index.js";
-import { resolve, resolveRegion, resolveEdgeEvidence } from "./resolve.js";
+import { resolve, resolveRegion, resolveEdgeEvidence, rebaseline } from "./resolve.js";
 
 const args = process.argv.slice(2);
 const modelPath = args.find((a) => !a.startsWith("--"));
 const write = args.includes("--write");
-if (!modelPath) { console.error("usage: resolve <model.json> [--write]"); process.exit(2); }
+// --confirm accepts CHANGED bodies as the new baseline (§9 batched confirm). It never
+// touches MOVED/RENAMED: those re-anchor a symbol and must stay an explicit decision.
+const confirm = args.includes("--confirm");
+if (!modelPath) { console.error("usage: resolve <model.json> [--write] [--confirm]"); process.exit(2); }
 
 const now = process.env.ARCHMAP_NOW ?? new Date().toISOString();
 const model = loadModel(modelPath);
@@ -22,6 +25,7 @@ const STATE_ORDER = ["MISSING", "AMBIGUOUS", "RENAMED?", "RENAMED", "CHANGED", "
 const BLOCKING = new Set(["MISSING", "AMBIGUOUS"]);
 const rows = [];
 let blocked = false;
+let confirmed = 0;
 
 for (const node of model.nodes) {
   const g = node.grounding;
@@ -32,13 +36,17 @@ for (const node of model.nodes) {
     const where = r.hit ?? r.to ?? null;
     rows.push({ state: r.state, line: `  ${node.id}  ${g.symbol.fqn}${where ? "  -> " + where.path + ":" + where.startLine : ""}` });
     if (BLOCKING.has(r.state)) blocked = true;
-    if (write && where && (r.state === "CLEAN" || r.state === "UNBASELINED")) {
+    if (confirm && rebaseline(g.symbol, r.state, where)) confirmed++;
+    if ((write || confirm) && where && (r.state === "CLEAN" || r.state === "UNBASELINED" || (confirm && r.state === "CHANGED"))) {
       if (r.state === "UNBASELINED") { g.symbol.bodyHash = where.bodyHash; g.symbol.sigHash = where.sigHash ?? undefined; }
       g.resolved = { path: where.path, startLine: where.startLine, endLine: where.endLine, bodyHash: where.bodyHash, resolvedAt: now };
       g.lines = `${where.startLine}-${where.endLine}`;
     }
   } else if (g.region) {
-    const r = resolveRegion(g.region, null, index);
+    // Was `null`, which symbol-index.js treats as "search the whole repo" — so a region
+    // anchored on a common name like `model` (4 files here) silently owned every match.
+    // Constrain to the leaf's own path, exactly as symbol anchors are.
+    const r = resolveRegion(g.region, g.path, index);
     rows.push({ state: r.state, line: `  ${node.id}  region [${g.region.anchors.join(", ")}]` });
     if (BLOCKING.has(r.state)) blocked = true; // regions inherit the block rule (documented extension)
   } else {
@@ -61,17 +69,16 @@ for (const e of model.edges) {
   edgeRows.push({ state: r.state, line: `  ${key}  ${detail}` });
   if (BLOCKING.has(r.state)) blocked = true;
 
-  if (write) {
-    for (const p of r.parts) {
-      if (p.state === "UNBASELINED" && p.hit) {
-        p.anchor.bodyHash = p.hit.bodyHash;
-        if (p.hit.sigHash) p.anchor.sigHash = p.hit.sigHash;
-      }
+  for (const p of r.parts) {
+    if (write && p.state === "UNBASELINED" && p.hit) {
+      p.anchor.bodyHash = p.hit.bodyHash;
+      if (p.hit.sigHash) p.anchor.sigHash = p.hit.sigHash;
     }
+    if (confirm && rebaseline(p.anchor, p.state, p.hit)) confirmed++;
   }
 }
 
-if (write) saveModel(modelPath, model);
+if (write || confirm) saveModel(modelPath, model);
 
 function report(title, list, order) {
   const byState = new Map();
@@ -91,6 +98,7 @@ function report(title, list, order) {
   console.log("--- " + (summary.length ? summary.join(", ") : "nothing to check"));
 }
 
+if (confirm) console.log(`confirmed ${confirmed} CHANGED anchor(s) as the new baseline\n`);
 report("nodes", rows, STATE_ORDER);
 report("edges", edgeRows, [...STATE_ORDER, "UNEVIDENCED"]);
 process.exit(blocked ? 1 : 0);

@@ -95,17 +95,17 @@
         "symbol": {
           "fqn": "validate",
           "kind": "fn",
-          "bodyHash": "820e9efd0dea720d5f4421da90baf83b932c5ccf545b1d69b7ff794d40094b98",
+          "bodyHash": "0da54483225891c4f417ce0f9d390b4b1ea90562db28cff22c2483bbde59cc34",
           "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
         },
         "resolved": {
           "path": "packages/validate/index.js",
-          "startLine": 21,
-          "endLine": 121,
-          "bodyHash": "820e9efd0dea720d5f4421da90baf83b932c5ccf545b1d69b7ff794d40094b98",
-          "resolvedAt": "2026-06-24T04:09:26.561Z"
+          "startLine": 24,
+          "endLine": 149,
+          "bodyHash": "0da54483225891c4f417ce0f9d390b4b1ea90562db28cff22c2483bbde59cc34",
+          "resolvedAt": "2026-08-25T00:00:00Z"
         },
-        "lines": "21-121"
+        "lines": "24-149"
       }
     },
     {
@@ -121,17 +121,17 @@
         "symbol": {
           "fqn": "render",
           "kind": "fn",
-          "bodyHash": "cd6ed9e6c59da31633844a7a86321e9fb908b5c153202d78a50b98b94a4d10dc",
+          "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
           "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
         },
         "resolved": {
           "path": "packages/render/html.js",
-          "startLine": 113,
-          "endLine": 156,
-          "bodyHash": "cd6ed9e6c59da31633844a7a86321e9fb908b5c153202d78a50b98b94a4d10dc",
-          "resolvedAt": "2026-06-24T04:09:26.561Z"
+          "startLine": 193,
+          "endLine": 262,
+          "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
+          "resolvedAt": "2026-08-25T00:00:00Z"
         },
-        "lines": "113-156"
+        "lines": "193-262"
       }
     },
     {
@@ -147,17 +147,17 @@
         "symbol": {
           "fqn": "layoutView",
           "kind": "fn",
-          "bodyHash": "65dfc1ab9bd2a8de70a7a63e8eb75d9e48c4bf181544a2e325ec7d66e36ac0d0",
+          "bodyHash": "8b79db990dbc7bcddaab525b3ea5b732ffeaad7e02221b0a388331b6cf6fdb62",
           "sigHash": "24a9f841e12befec5abc145759da871f982000b7d239d104c369c30df4780441"
         },
         "resolved": {
           "path": "packages/render/layout.js",
-          "startLine": 37,
-          "endLine": 74,
-          "bodyHash": "65dfc1ab9bd2a8de70a7a63e8eb75d9e48c4bf181544a2e325ec7d66e36ac0d0",
-          "resolvedAt": "2026-06-24T04:09:26.561Z"
+          "startLine": 85,
+          "endLine": 125,
+          "bodyHash": "8b79db990dbc7bcddaab525b3ea5b732ffeaad7e02221b0a388331b6cf6fdb62",
+          "resolvedAt": "2026-08-25T00:00:00Z"
         },
-        "lines": "37-74"
+        "lines": "85-125"
       }
     },
     {
@@ -191,10 +191,23 @@
       "to": "validate-core",
       "label": "gated by",
       "evidence": {
-        "kind": "doc",
+        "kind": "call",
         "path": "packages/validate/validate.mjs",
-        "anchors": [],
-        "note": "realized in validate.mjs top-level wiring: schema-authored models are gated by validate(). No extractable symbol to anchor (design §3.1)."
+        "anchors": [
+          {
+            "fqn": "<module>",
+            "kind": "module",
+            "path": "packages/validate/validate.mjs",
+            "bodyHash": "ceac3b80d7c90f593199743299ed724b683fba8b26a7c6db3337f0f4c071cc53"
+          },
+          {
+            "fqn": "validate",
+            "kind": "fn",
+            "path": "packages/validate/index.js",
+            "bodyHash": "0da54483225891c4f417ce0f9d390b4b1ea90562db28cff22c2483bbde59cc34",
+            "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
+          }
+        ]
       }
     },
     {
@@ -202,10 +215,23 @@
       "to": "render-core",
       "label": "unblocks",
       "evidence": {
-        "kind": "doc",
+        "kind": "call",
         "path": "packages/render/render.mjs",
-        "anchors": [],
-        "note": "realized in render.mjs top-level wiring: validate() gates the render() call. No extractable symbol to anchor (design §3.1)."
+        "anchors": [
+          {
+            "fqn": "<module>",
+            "kind": "module",
+            "path": "packages/render/render.mjs",
+            "bodyHash": "b708dc75441bc401f20e19b8226cdf2b48572122f83c5688d0ba00a919d2b113"
+          },
+          {
+            "fqn": "render",
+            "kind": "fn",
+            "path": "packages/render/html.js",
+            "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
+            "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
+          }
+        ]
       }
     },
     {
@@ -220,7 +246,7 @@
             "fqn": "render",
             "kind": "fn",
             "path": "packages/render/html.js",
-            "bodyHash": "a71747c08eaa0fdef5a369499049a5bb0daee2126676f6087859e7961c76c195",
+            "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
             "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
           },
           {

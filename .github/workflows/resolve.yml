@@ -1,15 +1,20 @@
 name: resolve
+# No `paths:` filter, deliberately. Groundings and edge citations anchor into ARBITRARY
+# files — the model already cites `spec.md` and `.github/workflows/validate.yml`, neither
+# of which a `packages/**` filter matches. A drift detector that skips the run because the
+# drift happened somewhere it wasn't watching is worse than no detector: the PR goes green
+# having checked nothing. The run is ~1s; correctness beats the saving.
 on:
   pull_request:
-    paths:
-      - "packages/**"
-      - "model.json"
+  push:
+    branches: [main]
 jobs:
   resolve:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "lts/*" }
+        # .nvmrc is the single source of truth, so CI and local agree by construction
+        with: { node-version-file: ".nvmrc" }
       - run: npm install
       - run: node packages/resolve/resolve.mjs model.json

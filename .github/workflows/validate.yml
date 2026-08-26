@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "lts/*" }
+        with: { node-version-file: ".nvmrc" }
       - run: npm install
       - run: npm test
       - run: node packages/validate/validate.mjs model.json

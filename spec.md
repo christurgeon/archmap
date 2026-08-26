@@ -50,7 +50,9 @@ archmap/
     validate/           # the gate (errors block render; warnings reviewed)
     resolve/            # grounding resolver + the symbol index (tree-sitter / SCIP)
     render/             # pure model.json -> archmap.html (agent never edits)
-  .github/workflows/    # validate on every PR; resolve on PRs touching grounded paths
+  .github/workflows/    # validate + resolve on every PR (resolve is unfiltered: citations
+                        # anchor into arbitrary files, so a path filter would skip the check
+                        # precisely when drift landed outside the watched paths)
 ```
 
 ---

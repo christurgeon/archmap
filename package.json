@@ -6,7 +6,7 @@
   "engines": { "node": ">=22" },
   "workspaces": ["packages/*"],
   "scripts": {
-    "test": "node --test",
+    "test": "node --test --test-concurrency=1",
     "validate": "node packages/validate/validate.mjs",
     "render": "node packages/render/render.mjs",
     "resolve": "node packages/resolve/resolve.mjs"

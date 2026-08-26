@@ -17,7 +17,29 @@ if (!modelPath) { console.error("usage: resolve <model.json> [--write] [--confir
 const now = process.env.ARCHMAP_NOW ?? new Date().toISOString();
 const model = loadModel(modelPath);
 const repoRoot = dirname(modelPath);
-const index = await buildIndex(walkSourceFiles(repoRoot));
+// Watchdog. web-tree-sitter's Parser.init() intermittently never settles when several
+// processes initialize WASM at once (measured: 3-4 of 12 concurrent runs wedge forever;
+// 0 of 15 serial). Without this the process hangs silently — a CI job burns its whole
+// timeout and reports nothing, which is the same "blindness reading as health" failure
+// this tool exists to prevent. Fail loudly instead. Raise for very large repos.
+const TIMEOUT_MS = Number(process.env.ARCHMAP_TIMEOUT_MS ?? 120000);
+let timer;
+let index;
+try {
+  index = await Promise.race([
+    buildIndex(walkSourceFiles(repoRoot)),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(
+        `symbol index did not finish in ${TIMEOUT_MS}ms — likely a wedged tree-sitter WASM init. ` +
+        `Retry, or raise ARCHMAP_TIMEOUT_MS.`)), TIMEOUT_MS);
+    }),
+  ]);
+} catch (e) {
+  console.error(`resolve: ${e.message}`);
+  process.exit(3); // distinct from 1 (drift) and 2 (usage): the check could not run
+} finally {
+  clearTimeout(timer);
+}
 
 // Collect one row per grounded node, then print GROUPED BY STATE — the batched confirm queue (§9 amendment):
 // a human reads "MOVED (3)", "RENAMED (1)", ... and confirms a batch, rather than scanning interleaved lines.

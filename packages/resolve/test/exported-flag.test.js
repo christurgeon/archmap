@@ -22,7 +22,7 @@ test("export-clause marks the declaration", async () => {
   assert.deepEqual(await flags(`function a(){}\nfunction b(){}\nexport { a };\n`), { a: true, b: false });
 });
 
-// §7.1: recorded under the EXPORTED name, not the local binding
+// recorded under the EXPORTED name, not the local binding
 test("renamed export-clause is recorded under the exported name", async () => {
   const f = await flags(`function a(){}\nexport { a as b };\n`);
   assert.equal(f.b, true, "exported name present");

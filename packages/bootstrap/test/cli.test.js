@@ -18,7 +18,7 @@ function run(args) {
   }
 }
 
-// walk is the only library module that reads disk, so it gets the one on-disk unit test (§13)
+// walk is the only library module that reads disk, so it gets the one on-disk unit test
 test("walkRepo classifies sources and manifests, honours .gitignore, skips tests", () => {
   const dir = mkdtempSync(join(tmpdir(), "amboot-walk-"));
   mkdirSync(join(dir, "src"), { recursive: true });
@@ -93,21 +93,30 @@ test("refuses to clobber without --force, and refuses an out outside the target"
 });
 
 // A bootstrap bug must never ship an invalid model: the temp is deleted and out is untouched.
-test("a failing self-check leaves no model and no temp behind", () => {
+// The self-check's FAILURE branch is not reachable from a fixture: bootstrap's walk and
+// resolve's walk agree on what a repo contains, and every component grounds to its exact
+// file, so the path-filtered lookup always returns one. That is the property working, not a
+// coverage win -- the branch fired for real during development, on a Next.js repo whose root
+// container had an empty path that validate read as missing. What is asserted here is the
+// surrounding guarantee: a run never leaves a temp behind, and never damages an existing model.
+test("a run leaves no temp behind and never damages an existing model", () => {
   const dir = fixtureRepo();
-  // point the container's only symbol at a file the walker cannot see, so resolve reports
-  // MISSING and blocks -- the self-check must refuse to promote the draft
-  writeFileSync(join(dir, "packages/tool/index.js"), "export function go(){ return 1; }\n");
-  const ok = run([dir, "--snapshot", "2026-08-27"]);
-  assert.equal(ok.code, 0, "control: this fixture normally succeeds");
+  assert.equal(run([dir, "--snapshot", "2026-08-27"]).code, 0);
+  assert.equal(readdirSync(dir).some((f) => f.startsWith(".archmap-bootstrap-")), false);
 
+  // a refused run must leave the existing model byte-identical
+  const model = join(dir, "model.json");
+  const sentinel = readFileSync(model, "utf8");
+  assert.equal(run([dir, "--snapshot", "2026-08-27"]).code, 2, "refuses without --force");
+  assert.equal(readFileSync(model, "utf8"), sentinel, "existing model untouched");
+  assert.equal(readdirSync(dir).some((f) => f.startsWith(".archmap-bootstrap-")), false);
+
+  // and a malformed root manifest degrades rather than crashing
   const dir2 = fixtureRepo();
   writeFileSync(join(dir2, "package.json"), "{ not json");
-  const r = run([dir2, "--snapshot", "2026-08-27"]);
-  assert.equal(r.code, 0, "an unparseable root manifest degrades, it does not crash");
-  assert.equal(readdirSync(dir2).some((f) => f.startsWith(".archmap-bootstrap-")), false, "no temp left behind");
+  assert.equal(run([dir2, "--snapshot", "2026-08-27"]).code, 0);
+  assert.equal(readdirSync(dir2).some((f) => f.startsWith(".archmap-bootstrap-")), false);
 });
-
 test("a target with no deployables still emits a valid system-only model", () => {
   const dir = mkdtempSync(join(tmpdir(), "amboot-empty-"));
   writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "solo", version: "1.0.0" }));

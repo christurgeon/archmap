@@ -1,15 +1,10 @@
-// A deliberately small .gitignore subset, used to decide what the symbol index may see.
+// A deliberately small .gitignore subset. Reusing it (not a hardcoded list or config knob)
+// works because the repo's own .gitignore is reviewed like any diff and is correct per-repo;
+// a hardcoded list gets `lib/` wrong across repos, and a config knob stays untuned.
 //
-// Why gitignore rather than a config knob or a hardcoded list: the repo already states
-// which paths are generated, that statement is reviewed like any other diff, and it is
-// correct by construction per-repo. A hardcoded list gets `lib/` wrong (source in one repo,
-// build output in the next); a config knob stays untuned until it burns someone.
-//
-// Supported: comments, blank lines, `dir/`, leading `/` anchoring, `*` (within a segment),
-// `**` (spanning segments), `?`, and `!` negation with last-match-wins.
-// NOT supported: character classes, escapes, nested .gitignore files. Anything unsupported
-// simply fails to match, so the index sees MORE than git would — never less. That direction
-// is the safe one: extra files are visible and countable, missing files are silent.
+// Supported: comments, blank lines, `dir/`, leading `/` anchor, `*`, `**`, `?`, `!` negation
+// (last-match-wins). NOT supported: character classes, escapes, nested .gitignore files —
+// those simply fail to match, so the index only ever sees MORE than git would, never less.
 
 function toRegExp(glob) {
   let re = "";

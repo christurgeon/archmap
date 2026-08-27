@@ -2,11 +2,9 @@ import { createHash } from "node:crypto";
 
 const LITERAL_TYPES = new Set(["string", "template_string", "number"]);
 
-// Canonical structural serialization of a tree-sitter node:
-// - skip comment nodes
-// - emit each named node's `type`
-// - for string/number literals, include the literal text (catches flipped flags, changed timeouts, swapped queue names)
-// - identifiers contribute only their type (names stripped) -> local renames are invisible
+// Structural serialization: node type only, comments skipped. String/number literals keep
+// their text (catches flipped flags, changed timeouts); identifiers keep only their type,
+// so local renames are invisible.
 export function canon(node) {
   if (!node || node.type === "comment") return "";
   let s = node.type;
@@ -19,12 +17,9 @@ export function canon(node) {
   return parts.length ? `${s}[${parts.join(",")}]` : s;
 }
 
-// Like canon, but keeps the text of LEAF named nodes — identifiers included.
-//
-// canon() strips names on purpose: for a function body, a local rename is not architectural
-// drift. For module WIRING the opposite holds — `validate(m)` vs `render(m)` is precisely the
-// relationship, and name-blind hashing would make those two identical. The cost is that
-// renaming a local in wiring code trips the hash; wiring is short, and the names are the point.
+// Like canon() but keeps identifier text. canon() strips names because a local rename inside
+// a function body isn't architectural drift — but wiring's identity IS its names, e.g.
+// `validate(m)` vs `render(m)`, so name-blind hashing there would erase the relationship.
 export function canonNamed(node) {
   if (!node || node.type === "comment") return "";
   if (node.namedChildCount === 0) return `${node.type}(${node.text})`;

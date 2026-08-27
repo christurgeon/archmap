@@ -8,10 +8,8 @@ function model(nodes, edges) {
   return { meta: { name: "x", version: "1", snapshot: "s" }, nodes, edges, mappings: [] };
 }
 
-// Anchored so these groundable leaves stay clean once Task 8 adds the
-// GROUNDABLE_UNANCHORED rule (the whole validate suite is re-run from Task 8 on).
-// Tests below use .includes() so they tolerate extra errors; the "clean" test's
-// deepEqual([]) is the one that would break without these anchors.
+// Anchored so these groundable leaves pass GROUNDABLE_UNANCHORED. Tests below use
+// .includes() to tolerate extra errors; only the "clean" test's deepEqual([]) needs this.
 const leaves = [
   { id: "a", name: "A", kind: "component", parent: null, axis: "logical", grounding: { repo: "r", path: "a", symbol: { fqn: "a", kind: "fn" } } },
   { id: "b", name: "B", kind: "component", parent: null, axis: "logical", grounding: { repo: "r", path: "b", symbol: { fqn: "b", kind: "fn" } } },

@@ -62,7 +62,7 @@ test("promoteEdges at the logical root surfaces cross-system edges", () => {
   assert.deepEqual(promoteEdges(m, null, "logical"), [{ from: "s1", to: "s2", label: "calls", cited: false }]);
 });
 
-// Bias to surfacing (spec §9): one unevidenced leaf edge must not hide behind cited ones.
+// Bias to surfacing: one unevidenced leaf edge must not hide behind cited ones.
 test("a promoted edge is cited only when every constituent leaf edge is", () => {
   const cite = { kind: "call", path: "p.js", anchors: [{ fqn: "f", kind: "fn" }] };
   // api->db at the sys view aggregates h1->db (reads) and h2->db (writes)

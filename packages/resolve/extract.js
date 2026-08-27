@@ -3,10 +3,9 @@ import { bodyHash, sigHash, canonNamed, hashString } from "./hash.js";
 
 const FN_VALUE = new Set(["arrow_function", "function_expression"]);
 
-// The synthetic per-file symbol for wiring code. Composition roots — CLI entry points,
-// main(), route registration, DI wiring — are top-level STATEMENTS, and a declaration-only
-// extractor sees nothing there. That is exactly where architectural relationships are
-// realized, so edges wired in such a file previously had no anchor (spec §9.1).
+// Synthetic per-file symbol for top-level wiring (CLI entry points, main(), route
+// registration, DI). These are statements, not declarations, so a declaration-only
+// extractor sees nothing there — and edges wired in such a file had no anchor (§9.1).
 export const MODULE_FQN = "<module>";
 
 const DECL_TYPES = new Set([
@@ -19,9 +18,9 @@ function lines(node) {
 }
 
 function recordFromFunctionish(fqn, kind, declNode, fnNode, exported = false) {
-  // fnNode carries parameters + body (the function_declaration itself, or the arrow/function-expression value).
-  // No-paren single-param arrows (`x => ...`) expose `parameter` (singular), not `parameters` — fall back so
-  // such symbols still get a non-null sigHash (otherwise sig-based RENAMED? recovery is silently unavailable).
+  // fnNode carries parameters + body. No-paren single-param arrows (`x => ...`) expose
+  // `parameter` (singular), not `parameters` — fall back so sigHash stays non-null
+  // (otherwise sig-based RENAMED? recovery is silently unavailable for this shape).
   const params = fnNode.childForFieldName("parameters") ?? fnNode.childForFieldName("parameter");
   const body = fnNode.childForFieldName("body");
   return { fqn, kind, exported, ...lines(declNode), bodyHash: bodyHash(body), sigHash: sigHash(params) };
@@ -116,9 +115,9 @@ export async function extractSymbols(source, lang) {
     }
 
     if (wiring.length) {
-      // Hash the wiring statements only. Declaration bodies are deliberately excluded:
-      // those already have their own bodyHash, and folding them in would make every edit
-      // anywhere in the file trip every edge anchored to the module.
+      // Hash only the wiring statements. Declaration bodies are excluded — they have their
+      // own bodyHash, and folding them in would make every edit in the file trip every
+      // module-anchored edge.
       const hash = hashString("module[" + wiring.map((n) => canonNamed(n)).join(",") + "]");
       out.push({
         fqn: MODULE_FQN, kind: "module",

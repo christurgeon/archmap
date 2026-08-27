@@ -71,11 +71,10 @@ test("render emits the label toggle, edge data hooks, and per-node relationships
 
 test("render ships the themed visual system", () => {
   const html = render(model());
-  // semantic colour-by-kind vars (renderer-owned, spec §2)
+  // semantic colour-by-kind vars (renderer-owned)
   assert.match(html, /--k-person:/);
   assert.match(html, /--k-workload:/);
-  // theme cascade: explicit light override + OS default scoped so an explicit
-  // data-theme always wins (the B1 bug class)
+  // theme cascade: explicit light override + OS default scoped so an explicit data-theme always wins
   assert.match(html, /\[data-theme="light"\]/);
   assert.match(html, /:root:not\(\[data-theme\]\)/);
   assert.match(html, /prefers-color-scheme: ?light/);

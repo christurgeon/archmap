@@ -17,9 +17,9 @@ function scratchRepo(model, files) {
   return dir;
 }
 function once(dir, args) {
-  // timeout: without it a wedged child blocks execFileSync forever — the test never fails,
-  // it just stops, and killing the runner orphans the child (whose argv doesn't match a
-  // `node --test` pkill, so it lingers and starves later runs). Fail loudly instead.
+  // Without a timeout a wedged child blocks execFileSync forever: the test never fails, it
+  // just stops, and killing the runner orphans the child (its argv doesn't match a
+  // `node --test` pkill, so it lingers and starves later runs).
   try {
     const out = execFileSync("node", [cli, join(dir, "model.json"), ...args], { encoding: "utf8", cwd: repoRoot, timeout: 30000, env: { ...process.env, ARCHMAP_NOW: "2026-06-24T00:00:00Z" } });
     return { code: 0, out };
@@ -28,11 +28,8 @@ function once(dir, args) {
   }
 }
 
-// One retry, and ONLY on a timeout. web-tree-sitter's Parser.init() intermittently never
-// settles (spec §9, CLAUDE.md); measured at roughly 1 run in 12 even with a serial runner.
-// resolve.mjs carries a watchdog for this in production — here the wedge would otherwise be
-// an ~8% spurious red build, which trains people to ignore CI. A non-timeout failure is a
-// real failure and is never retried, so this cannot mask a genuine regression.
+// Retry ONLY on a timeout — Parser.init() intermittently wedges (~1/12 runs even serial).
+// A non-timeout failure is never retried, so this can never mask a genuine regression.
 function run(dir, args = []) {
   const first = once(dir, args);
   if (!first.timedOut) return first;
@@ -109,8 +106,8 @@ test("AMBIGUOUS: fqn defined in two files — blocks with exit 1", () => {
   assert.match(r.out, /AMBIGUOUS/);
 });
 
-// `config` evidence was unit-tested but never exercised through the CLI, so the
-// pathExists predicate resolve.mjs supplies was untested against a real filesystem.
+// Exercises the pathExists predicate resolve.mjs supplies against a real filesystem
+// (previously only unit-tested).
 test("config citation: path present -> CLEAN exit 0; path gone -> MISSING exit 1", () => {
   const withEdge = (evPath) => ({
     meta: { name: "t", version: "1", snapshot: "s" },

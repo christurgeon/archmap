@@ -14,7 +14,7 @@ test("exported symbols become components; private helpers do not", async () => {
   assert.deepEqual(names(r), ["pub"]);
 });
 
-// A class is one component; its methods are not separate components (§7.1)
+// A class is one component; its methods are not separate components
 test("class methods are excluded, the class itself is kept", async () => {
   const index = await idx([["pkg/a/index.js", "export class Svc { run(){} stop(){} }\n"]]);
   assert.deepEqual(names(groundContainer(container(), index)), ["Svc"]);
@@ -43,8 +43,7 @@ test("a non-JS container is undrilled with its own reason", async () => {
   assert.match(r.reason, /non-JS\/TS/);
 });
 
-// The case that motivates file-path id namespacing: basename-only ids would collide and
-// silently drop a real exported symbol, violating "never silently omit" (§7).
+// motivates path-based ids: basename-only ids would collide and silently drop a real symbol.
 test("same name in two files yields two distinct components, both grounded to their own file", async () => {
   const index = await idx([
     ["pkg/a/src/user/model.js", "export function create(){ return 1; }\n"],

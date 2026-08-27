@@ -16,8 +16,8 @@ function base() {
 
 const codes = (list) => list.map((x) => x.code);
 
-// Evidence is optional by design (spec §5): requiring it would push authors toward
-// fabricated citations, which is the self-certification failure the design exists to avoid.
+// Evidence is optional by design: requiring it would push authors toward fabricated
+// citations, the self-certification failure the design exists to avoid.
 test("an unevidenced edge is not an error", () => {
   const { errors, warnings } = validate(base());
   assert.deepEqual(errors, []);
@@ -78,8 +78,8 @@ test("EDGE_EVIDENCE_BAD_ANCHOR when an anchor lacks fqn or kind", () => {
   assert.equal(codes(validate(m).errors).includes("EDGE_EVIDENCE_BAD_ANCHOR"), true);
 });
 
-// Mirrors LINES_AUTHORED: resolution state is derived output, computed at check time
-// and never stored in the model (spec §3.2).
+// Mirrors LINES_AUTHORED: resolution state is derived output, computed at check
+// time and never stored in the model.
 test("EDGE_EVIDENCE_RESOLVED_AUTHORED warns on hand-written resolution state", () => {
   const m = base();
   m.edges[0].evidence = {

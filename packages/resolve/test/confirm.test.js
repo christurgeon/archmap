@@ -11,8 +11,8 @@ test("rebaseline updates a CHANGED anchor in place", () => {
   assert.equal(a.sigHash, "S2");
 });
 
-// §9: never auto-bump path. A MOVED/RENAMED anchor is a decision, not a confirmation --
-// re-anchoring it silently is how a green check lands on the wrong symbol.
+// A MOVED/RENAMED anchor is a decision, not a confirmation — re-anchoring it silently
+// is how a green check lands on the wrong symbol.
 test("rebaseline refuses states that would silently re-anchor", () => {
   for (const state of ["MOVED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"]) {
     const a = { fqn: "f", kind: "fn", bodyHash: "OLD" };

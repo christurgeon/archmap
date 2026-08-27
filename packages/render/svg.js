@@ -42,9 +42,8 @@ export function renderViewSvg(view) {
     const sub = esc(n.kind + (n.tech ? " · " + n.tech : ""));
     out.push(`<g class="${cls}" data-id="${esc(n.id)}" transform="translate(${b.x},${b.y})">`);
     out.push(`<rect class="amrect" width="${b.w}" height="${b.h}" rx="6" />`);
-    // Left-rail kind accent (filled per-kind via CSS): a full-height category
-    // stripe, inset clear of the rounded corners, so kind reads at a glance on
-    // leaf boxes too — not just the kind-coloured border of drillable ones.
+    // Left-rail kind accent: a full-height stripe, inset clear of the rounded corners,
+    // so kind reads at a glance on leaf boxes too — not just drillable ones' border.
     out.push(`<rect class="amrail" x="8" y="8" width="4" height="${b.h - 16}" rx="2" />`);
     out.push(`<text class="amname" x="${b.w / 2}" y="27" text-anchor="middle">${esc(n.name)}</text>`);
     out.push(`<text class="amsub" x="${b.w / 2}" y="47" text-anchor="middle">${sub}</text>`);

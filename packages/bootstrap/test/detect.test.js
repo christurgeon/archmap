@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { detectDeployables } from "../detect.js";
 
-// detect is pure, so fixtures are in-memory FileEntry[] — no on-disk repos needed (§13)
+// detect is pure, so fixtures are in-memory FileEntry[] — no on-disk repos needed
 const pkg = (path, json) => ({ path, name: "package.json", kind: "manifest", content: JSON.stringify(json) });
 const src = (path) => ({ path, name: path.slice(path.lastIndexOf("/") + 1), kind: "source", lang: "js", content: "" });
 const ids = (cs) => cs.map((c) => c.id);
@@ -29,7 +29,7 @@ test("a Dockerfile is a deployability signal on its own", () => {
 });
 
 // A directory CONVENTION, not a true deployability check — over-detection here is the
-// agent-fixable kind, and each immediate subdirectory is its own candidate (§6).
+// agent-fixable kind, and each immediate subdirectory is its own candidate.
 test("apps/* enumerates each subdirectory, not the parent", () => {
   const files = [src("apps/web/index.js"), src("apps/api/index.js"), src("apps/web/util.js")];
   assert.deepEqual(ids(detectDeployables(files)), ["pkg-api", "pkg-web"]);
@@ -45,9 +45,7 @@ test("polyglot: a non-JS container is detected, with lang null", () => {
   assert.equal(c.lang, null, "no JS/TS source -> ungroundable, will be undrilled");
 });
 
-// §13.3 expects the single-package archetype to yield exactly ONE container: in that repo
-// the whole thing is the deployable. The system still wraps it — a C4 system containing one
-// container is the right shape, not a redundancy.
+// the single-package archetype yields exactly ONE container — the whole repo is the deployable.
 test("single-package repo yields one container, named from the manifest", () => {
   const files = [pkg("package.json", { name: "solo", bin: { solo: "x.js" } }), src("index.js")];
   const [c] = detectDeployables(files);
@@ -56,8 +54,7 @@ test("single-package repo yields one container, named from the manifest", () => 
   assert.deepEqual(c.signals, ["bin"]);
 });
 
-// The three original signals demonstrably did NOT carry the single-app archetype §6 claims:
-// a framework app has no bin, no Dockerfile, no apps/ prefix — it has a start script.
+// a framework app has no bin, Dockerfile, or apps/ prefix — only a start script.
 test("a start or serve script is a deployability signal", () => {
   const app = [pkg("package.json", { name: "web", scripts: { dev: "next dev", build: "next build", start: "next start" } }), src("app/page.js")];
   assert.deepEqual(detectDeployables(app).map((c) => c.id), ["pkg-web"]);

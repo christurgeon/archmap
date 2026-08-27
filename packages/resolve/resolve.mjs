@@ -9,19 +9,17 @@ import { resolve, resolveRegion, resolveEdgeEvidence, rebaseline } from "./resol
 const args = process.argv.slice(2);
 const modelPath = args.find((a) => !a.startsWith("--"));
 const write = args.includes("--write");
-// --confirm accepts CHANGED bodies as the new baseline (§9 batched confirm). It never
-// touches MOVED/RENAMED: those re-anchor a symbol and must stay an explicit decision.
+// --confirm accepts CHANGED bodies as the new baseline. It never touches MOVED/RENAMED:
+// those re-anchor a symbol and must stay an explicit decision.
 const confirm = args.includes("--confirm");
 if (!modelPath) { console.error("usage: resolve <model.json> [--write] [--confirm]"); process.exit(2); }
 
 const now = process.env.ARCHMAP_NOW ?? new Date().toISOString();
 const model = loadModel(modelPath);
 const repoRoot = dirname(modelPath);
-// Watchdog. web-tree-sitter's Parser.init() intermittently never settles when several
-// processes initialize WASM at once (measured: 3-4 of 12 concurrent runs wedge forever;
-// 0 of 15 serial). Without this the process hangs silently — a CI job burns its whole
-// timeout and reports nothing, which is the same "blindness reading as health" failure
-// this tool exists to prevent. Fail loudly instead. Raise for very large repos.
+// Parser.init() intermittently never settles when several processes init WASM at once
+// (measured: 3-4/12 concurrent runs wedge forever, 0/15 serial). Without this the process
+// hangs silently instead of failing loudly; raise ARCHMAP_TIMEOUT_MS for very large repos.
 const TIMEOUT_MS = Number(process.env.ARCHMAP_TIMEOUT_MS ?? 120000);
 let timer;
 let index;
@@ -41,8 +39,8 @@ try {
   clearTimeout(timer);
 }
 
-// Collect one row per grounded node, then print GROUPED BY STATE — the batched confirm queue (§9 amendment):
-// a human reads "MOVED (3)", "RENAMED (1)", ... and confirms a batch, rather than scanning interleaved lines.
+// One row per grounded node, printed GROUPED BY STATE for the batched confirm queue: a human
+// reads "MOVED (3)", "RENAMED (1)", ... and confirms a batch, instead of scanning interleaved lines.
 const STATE_ORDER = ["MISSING", "AMBIGUOUS", "RENAMED?", "RENAMED", "CHANGED", "MOVED", "UNBASELINED", "UNANCHORED", "CLEAN", "SKIPPED"];
 const BLOCKING = new Set(["MISSING", "AMBIGUOUS"]);
 const rows = [];
@@ -65,17 +63,16 @@ for (const node of model.nodes) {
       g.lines = `${where.startLine}-${where.endLine}`;
     }
   } else if (g.region) {
-    // Was `null`, which symbol-index.js treats as "search the whole repo" — so a region
-    // anchored on a common name like `model` (4 files here) silently owned every match.
-    // Constrain to the leaf's own path, exactly as symbol anchors are.
+    // Constrained to the leaf's own path, like symbol anchors — passing null lets
+    // symbol-index.js search the whole repo, so a common name like `model` (4 files
+    // here) would silently match everywhere.
     const r = resolveRegion(g.region, g.path, index);
     const names = normalizeRegionAnchors(g.region.anchors).map((a) => a.fqn);
     const detail = names.length ? `region [${names.join(", ")}]` : "region (no anchors — nothing to check)";
     rows.push({ state: r.state, line: `  ${node.id}  ${detail}` });
     if (BLOCKING.has(r.state)) blocked = true; // regions inherit the block rule (documented extension)
 
-    // Region anchors baseline like every other anchor. Before this they carried no hashes
-    // at all, so a region reported CLEAN however far its bodies had drifted.
+    // Region anchors baseline like any other anchor: drift is checked, not silently CLEAN.
     if (write || confirm) {
       g.region.anchors = normalizeRegionAnchors(g.region.anchors);
       for (const p of r.parts) {
@@ -94,9 +91,8 @@ for (const node of model.nodes) {
   }
 }
 
-// Edge citations: falsify the claim that a relationship is realized where the model says.
-// Reported separately from node drift — a green box set and a green edge set are different
-// guarantees, and collapsing them is exactly the overselling spec §10 warns against.
+// Edge citations, reported separately from node drift: a green box set and a green edge
+// set are different guarantees, and collapsing them oversells the map (spec §10).
 const edgeRows = [];
 for (const e of model.edges) {
   const r = resolveEdgeEvidence(e.evidence, index, {

@@ -336,8 +336,12 @@ Recorded here so it is not re-proposed without new information.
 version of it. Once edges carry anchors, a later pass can **propose** citations
 (`--suggest-evidence`) and **corroborate** them ("you cited `X`, but nothing in this scope
 references `X`"). Corroboration is non-circular, because an independently authored claim is
-being contradicted — Reflexion's three-input structure properly restored. Revisit only with a
-real corpus.
+being contradicted — Reflexion's three-input structure properly restored.
+
+**Superseded 2026-08-27.** This held the door open pending "a real corpus". `bootstrap` shipped
+and the corpus does not materialise — undrilled containers mean 0–7 components per model — so
+spec §11 now records the discovery half as **closed**, not deferred. Corroborating an authored
+citation survives; discovering edges does not.
 
 ## 11. Amendments to `spec.md`
 

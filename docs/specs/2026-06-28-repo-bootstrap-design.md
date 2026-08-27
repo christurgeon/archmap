@@ -1,7 +1,8 @@
 # archmap repo-bootstrap — design
 
-- **Status:** approved design, hardened by staff review (2026-06-28) and an independent Opus
-  design review (2026-07-17), pre-implementation
+- **Status:** **implemented 2026-08-27.** Approved design, hardened by staff review
+  (2026-06-28) and an independent Opus design review (2026-07-17). Built as specced; §11's
+  output contract is amended below where a later change to `resolve` altered it.
 - **Scope:** a new `packages/bootstrap` that turns a target source repo into a conservative,
   valid, gate-passing draft `model.json`.
 
@@ -330,11 +331,20 @@ This makes "valid by construction" enforceable for real targets, not just the do
 }
 ```
 
-This draft passes `validate` (**0 errors, 0 warnings** in v1 — the `UNDRILLED_CONTAINER`
-warning is deferred) and `resolve` (component CLEAN; undrilled region CLEAN; exit 0).
-**Known v1 limitation:** an undrilled empty-`region` resolves CLEAN, so it reads as healthy
-until the render badge / `UNDRILLED_CONTAINER` warning ships (out of scope here); the
-`region.note` is the v1 honesty signal.
+This draft passes `validate` (**0 errors**) and `resolve` (**exit 0**).
+
+> **Amended at implementation (2026-08-27).** This paragraph originally promised *0 warnings*
+> and said an undrilled region resolves **CLEAN**, noting as a known limitation that it
+> therefore "reads as healthy" until an `UNDRILLED_CONTAINER` warning shipped. That limitation
+> is now closed, from the other direction: `resolve` was fixed because an empty region resolved
+> CLEAN **unconditionally** — `[].every()` is vacuously true — which is the false-green this
+> spec was resigned to. An undrilled container now resolves **`UNANCHORED`** and `validate`
+> emits a **`REGION_EMPTY`** warning.
+>
+> So the real contract is **0 errors, one warning per undrilled container**, and the self-check
+> still passes because warnings never block. Verified on a copy of archmap: 5 nodes, 1 grounded
+> component CLEAN, 2 undrilled containers UNANCHORED, `validate` 0 errors / 2 warnings,
+> `resolve` exit 0, byte-identical across runs.
 
 ## 12. Error handling
 
@@ -390,9 +400,9 @@ Match house style: ESM, named exports, `node:test` + `node:assert/strict`, `test
 
 ## 14. Out of scope / future (v1.1+)
 
-Deploy axis (`detect` IaC → deploy tree, with the §4 own-axis-tree discipline); the
-`UNDRILLED_CONTAINER` validator warning + render "draft" badge (one coherent change in the
-render-trust feature); real grounding for non-JS/TS; expanded deployability signals; Context
+Deploy axis (`detect` IaC → deploy tree, with the §4 own-axis-tree discipline); the render
+"draft" badge for undrilled containers (**the validator half of this shipped early as
+`REGION_EMPTY`** — see §11); real grounding for non-JS/TS; expanded deployability signals; Context
 (`person`/`external`) inference; edge/mapping inference; grouping-node synthesis; incremental
 re-scan / model merge.
 

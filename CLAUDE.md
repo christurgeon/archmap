@@ -23,7 +23,8 @@ tree-sitter WASM parsers. The packages form a one-way chain — later ones depen
 - `packages/schema` — model shape + the edit-operation API. **This is the agent's only write surface.**
 - `packages/validate` — the gate; errors block render, warnings are reviewed.
 - `packages/render` — pure `model.json` → self-contained `archmap.html`. **Never hand-edit the agent's model through the renderer.**
-- `packages/resolve` — grounding resolver (spec §9); checks each grounded leaf still points at a real JS/TS symbol and reports drift.
+- `packages/resolve` — grounding resolver (spec §9); checks each grounded leaf still points at a real JS/TS symbol and reports drift, including edge citations.
+- `packages/bootstrap` — target repo → conservative draft `model.json`, valid by construction (self-checks against validate + resolve before writing).
 
 ## Commands
 
@@ -38,6 +39,9 @@ node packages/render/render.mjs model.json archmap.html
 node packages/resolve/resolve.mjs model.json           # check grounding + edge citations; exit 1 on MISSING/AMBIGUOUS
 node packages/resolve/resolve.mjs model.json --write   # establish baselines / write derived fields
 node packages/resolve/resolve.mjs model.json --confirm # accept CHANGED bodies as the new baseline (§9)
+
+node packages/bootstrap/bootstrap.mjs <target-repo> [out] [--snapshot YYYY-MM-DD] [--force]
+                                                       # draft a model for a repo; never point it at archmap's own checkout
 ```
 
 CI runs `npm test` + validate + resolve on every PR and on push to `main`. Resolve has no path

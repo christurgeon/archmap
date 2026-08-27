@@ -49,6 +49,7 @@ archmap/
     schema/             # types + the edit-operation API
     validate/           # the gate (errors block render; warnings reviewed)
     resolve/            # grounding resolver + the symbol index (tree-sitter / SCIP)
+    bootstrap/          # target repo -> conservative, gate-passing draft model.json
     render/             # pure model.json -> archmap.html (agent never edits)
   .github/workflows/    # validate + resolve on every PR (resolve is unfiltered: citations
                         # anchor into arbitrary files, so a path filter would skip the check
@@ -494,3 +495,22 @@ Don't let a green check convince you the map is honest. Cited edges are *checkab
    Static reconciliation stays deferred.
 
    Current shipped scope is steps 1–2 plus edge citations.
+
+4. **bootstrap — the author-side on-ramp** (`docs/specs/2026-06-28-repo-bootstrap-design.md`,
+   implemented 2026-08-27). The maintain half (schema, validate, render, resolve) had no
+   counterpart: nothing turned a repo into a first model, so every node was hand-authored and
+   the only `model.json` in existence was archmap modelling itself. `bootstrap` closes that
+   cold-start, emitting a conservative draft that is **valid by construction** — it self-checks
+   against `validate` and `resolve` as subprocesses and refuses to write a model that fails
+   either. It deliberately does **not** try to be smart: libraries get no box, a container with
+   more than 7 exported symbols stays undrilled rather than having 7 of them picked
+   arbitrarily, and nothing is ever silently omitted.
+
+   **Why the ≤7 drill rule is not arbitrary.** It follows from the fan-out cap in §5.2 (soft 7,
+   hard 14). Drilling a 12-export container into 12 components emits a model that warns; and
+   emitting an arbitrary 7 of the 12 would be the *deterministic layer* deciding which symbols
+   are architecturally significant — a semantic judgement that §2 reserves for the agent. An
+   honest undrilled placeholder is the truthful output.
+
+**The build order is now complete.** What remains is deliberately deferred, not unfinished:
+static edge discovery (§11, with measurements), the deploy axis, and non-JS/TS grounding.

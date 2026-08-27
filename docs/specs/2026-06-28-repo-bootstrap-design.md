@@ -163,12 +163,23 @@ Detect **deployability**, not directories. A candidate package/dir becomes a con
 - **`package.json` with a `bin` field** (a CLI is a runnable unit — catches archmap's own three
   CLI packages, which the dogfood test depends on);
 - a **`Dockerfile` / `Containerfile`** at its root;
-- residence under an **`apps/*` or `services/*`** workspace convention.
+- residence under an **`apps/*` or `services/*`** workspace convention;
+- **a `start` or `serve` script** in `package.json` (a long-running entry point).
 
-These three carry the monorepo, single-app, microservices, and CLI-repo archetypes. Other
-signals (`start`/`serve` scripts, compose/k8s/serverless/Procfile) are a **v1.1 expansion** as
-the heuristic earns trust. **Libraries** (a workspace package with none of the above) are
-**omitted** from L2 — the agent promotes one to a box later if it earns one.
+> **Amended at implementation (2026-08-27) — the fourth signal was promoted into v1.** This
+> section originally listed three signals and claimed they "carry the monorepo, single-app,
+> microservices, and CLI-repo archetypes", with `start`/`serve` deferred to v1.1. Measured
+> against a real Next.js app, that claim is false: it has no `bin`, no `Dockerfile`, and no
+> `apps/` prefix — it has a `start` script. Without the fourth signal the single-app archetype,
+> the most common repo shape, produced a **one-node model**. `build`/`test` scripts are
+> deliberately *not* signals; they describe a library's toolchain, not a deployable.
+
+Remaining signals (compose/k8s/serverless/Procfile) stay a **v1.1 expansion** as the heuristic
+earns trust. **Libraries** (a workspace package with none of the above) are
+**omitted** from L2 — the agent promotes one to a box later if it earns one. **The repo root
+itself can be a container** when it carries a signal: in a single-package repo the whole repo
+*is* the deployable, which is the one-container outcome §13.3 expects. Its repo-relative path
+is `""`, which `validate` reads as a missing path, so the assembler normalizes it to `"."`.
 
 **Workspace membership** comes from root `package.json` `workspaces`, or `lerna.json` /
 `nx.json` / `turbo.json` — all JSON, parseable with no new dependency. `pnpm-workspace.yaml` is

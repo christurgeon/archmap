@@ -45,9 +45,25 @@ test("polyglot: a non-JS container is detected, with lang null", () => {
   assert.equal(c.lang, null, "no JS/TS source -> ungroundable, will be undrilled");
 });
 
-test("single-package repo yields no container (the root is the system, not a box)", () => {
+// §13.3 expects the single-package archetype to yield exactly ONE container: in that repo
+// the whole thing is the deployable. The system still wraps it — a C4 system containing one
+// container is the right shape, not a redundancy.
+test("single-package repo yields one container, named from the manifest", () => {
   const files = [pkg("package.json", { name: "solo", bin: { solo: "x.js" } }), src("index.js")];
-  assert.deepEqual(detectDeployables(files), []);
+  const [c] = detectDeployables(files);
+  assert.equal(c.id, "pkg-solo");
+  assert.equal(c.path, "");
+  assert.deepEqual(c.signals, ["bin"]);
+});
+
+// The three original signals demonstrably did NOT carry the single-app archetype §6 claims:
+// a framework app has no bin, no Dockerfile, no apps/ prefix — it has a start script.
+test("a start or serve script is a deployability signal", () => {
+  const app = [pkg("package.json", { name: "web", scripts: { dev: "next dev", build: "next build", start: "next start" } }), src("app/page.js")];
+  assert.deepEqual(detectDeployables(app).map((c) => c.id), ["pkg-web"]);
+
+  const lib = [pkg("package.json", { name: "lib", scripts: { test: "node --test", build: "tsc" } }), src("index.js")];
+  assert.deepEqual(detectDeployables(lib), [], "build/test scripts are not deployability");
 });
 
 test("output is ordered by repo-relative path, a total order", () => {

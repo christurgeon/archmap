@@ -85,3 +85,12 @@ test("v1 emits no edges and no mappings", () => {
   assert.deepEqual(model.edges, []);
   assert.deepEqual(model.mappings, []);
 });
+
+// A single-package repo's container is the repo root, whose repo-relative path is "".
+// validate treats an empty path as missing, so the assembler must normalize it.
+test("a root container grounds to '.', not the empty string", () => {
+  const rootC = { id: "pkg-solo", name: "solo", path: "", lang: "js", undrilled: true, reason: "why", components: [] };
+  const model = assemble({ meta, system, containers: [rootC] });
+  assert.equal(model.nodes.find((n) => n.id === "pkg-solo").grounding.path, ".");
+  assert.deepEqual(validate(model).errors, [], "an empty path would trip GROUNDING_REPO_PATH");
+});

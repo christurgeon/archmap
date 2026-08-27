@@ -25,7 +25,9 @@ export function assemble({ meta, system, containers, log = () => {} }) {
       // key crashed resolveRegion on `.map` of undefined (bootstrap spec probe D).
       setGrounding(model, c.id, {
         repo: meta.name,
-        path: c.path,
+        // a single-package repo's container IS the root, whose repo-relative path is "" —
+        // and validate treats an empty path as missing, so normalize to "."
+        path: c.path || ".",
         region: { anchors: [], note: c.reason },
       });
       continue;

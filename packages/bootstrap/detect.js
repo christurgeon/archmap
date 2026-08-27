@@ -22,10 +22,22 @@ function signalsFor(dir, files) {
   if (pkg) {
     const j = readJson(pkg);
     if (j && j.bin) out.push("bin");
+    // A long-running entry point is a deployability signal. Added in v1 because the three
+    // original signals demonstrably do NOT carry the single-app archetype §6 claims they do:
+    // a Next.js app has no bin, no Dockerfile and no apps/ prefix — it has a start script.
+    // Measured: without this, the most common repo shape yields a one-node model.
+    const scripts = (j && j.scripts) || {};
+    if (scripts.start || scripts.serve) out.push("start-script");
   }
   if (at("Dockerfile") || at("Containerfile")) out.push("dockerfile");
   if (/^(apps|services)\/[^/]+$/.test(dir)) out.push("apps-convention");
   return out;
+}
+
+function rootName(files) {
+  const root = files.find((f) => f.kind === "manifest" && f.path === "package.json");
+  const j = root ? readJson(root) : null;
+  return (j && j.name) || "app";
 }
 
 function candidateDirs(files) {
@@ -43,7 +55,7 @@ function candidateDirs(files) {
 
 export function detectDeployables(files) {
   const langOf = (dir) => {
-    const src = files.filter((f) => f.kind === "source" && (dir === "" ? true : f.path.startsWith(dir + "/")));
+    const src = files.filter((f) => f.kind === "source" && (dir === "" || f.path.startsWith(dir + "/")));
     return src.length ? src[0].lang : null;
   };
 
@@ -51,10 +63,13 @@ export function detectDeployables(files) {
   for (const dir of candidateDirs(files)) {
     const signals = signalsFor(dir, files);
     if (!signals.length) continue;           // a library: omitted from L2 (§6)
-    if (dir === "") continue;                 // the repo root is the system, not a container
+    // The root CAN be a container: in a single-package repo the whole repo is the deployable,
+    // and §13.3 expects exactly one container for that archetype. The system still wraps it —
+    // a C4 system containing one container is the correct shape, not a redundancy.
+    const seg = dir === "" ? rootName(files) : lastSeg(dir);
     out.push({
-      id: "pkg-" + slug(lastSeg(dir)),
-      name: lastSeg(dir),
+      id: "pkg-" + slug(seg),
+      name: seg,
       path: dir,
       lang: langOf(dir),
       signals,

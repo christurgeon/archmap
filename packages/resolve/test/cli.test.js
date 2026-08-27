@@ -18,7 +18,10 @@ function scratchRepo(model, files) {
 }
 function run(dir, args = []) {
   try {
-    const out = execFileSync("node", [cli, join(dir, "model.json"), ...args], { encoding: "utf8", cwd: repoRoot, env: { ...process.env, ARCHMAP_NOW: "2026-06-24T00:00:00Z" } });
+    // timeout: without it a wedged child blocks execFileSync forever — the test never fails,
+    // it just stops, and killing the runner orphans the child (whose argv doesn't match a
+    // `node --test` pkill, so it lingers and starves later runs). Fail loudly instead.
+    const out = execFileSync("node", [cli, join(dir, "model.json"), ...args], { encoding: "utf8", cwd: repoRoot, timeout: 30000, env: { ...process.env, ARCHMAP_NOW: "2026-06-24T00:00:00Z" } });
     return { code: 0, out };
   } catch (e) { return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? "") }; }
 }

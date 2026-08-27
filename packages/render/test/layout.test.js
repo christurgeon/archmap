@@ -121,3 +121,25 @@ test("edge labels do not overlap each other or boxes", () => {
       assert.equal(rectsOverlap(L, box), false,
         `label "${L.label}" overlaps box ${box.id}`);
 });
+
+// Regression: layoutView rebuilt edge objects and dropped `cited`, so svg.js never applied
+// the uncited class while the legend still claimed the distinction existed.
+test("layoutView preserves the cited flag through routing", () => {
+  const m = {
+    meta: { name: "x", version: "1", snapshot: "s" },
+    nodes: [
+      { id: "a", name: "A", kind: "component", parent: null, axis: "logical" },
+      { id: "b", name: "B", kind: "component", parent: null, axis: "logical" },
+      { id: "c", name: "C", kind: "component", parent: null, axis: "logical" },
+    ],
+    edges: [
+      { from: "a", to: "b", label: "calls", evidence: { kind: "call", path: "p.js", anchors: [{ fqn: "f", kind: "fn" }] } },
+      { from: "a", to: "c", label: "calls" },
+    ],
+    mappings: [],
+  };
+  const view = layoutView(m, null, "logical");
+  const byTo = Object.fromEntries(view.edges.map((e) => [e.to, e.cited]));
+  assert.equal(byTo.b, true, "cited edge");
+  assert.equal(byTo.c, false, "uncited edge");
+});

@@ -28,7 +28,11 @@ export function renderViewSvg(view) {
   out.push(`<defs><marker id="${mid}" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M1,1 L8,4.5 L1,8 Z" /></marker></defs>`);
 
   for (const e of view.edges) {
-    out.push(`<polyline class="amedge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" points="${poly(e.points)}" fill="none" marker-end="url(#${mid})" />`);
+    // `uncited` is a pure function of authored data (does the edge carry a citation),
+    // never of resolution state — that is computed at check time and deliberately not
+    // stored in the model, so render output stays byte-stable across resolve runs.
+    const cls = e.cited === false ? "amedge uncited" : "amedge";
+    out.push(`<polyline class="${cls}" data-from="${esc(e.from)}" data-to="${esc(e.to)}" points="${poly(e.points)}" fill="none" marker-end="url(#${mid})" />`);
   }
 
   for (const b of view.boxes) {

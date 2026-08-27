@@ -54,6 +54,9 @@ header h1{font-size:15px;margin:0;font-weight:600}
 .view.active{display:block}
 svg.amview{max-width:100%;height:auto}
 .amedge{stroke:var(--edge);stroke-width:1.5}
+/* An uncited edge is a relationship nothing in the code is claimed to realize. Dashed,
+   not red: it is an honest gap in the map, not an error (design §5 — evidence is optional). */
+.amedge.uncited{stroke-dasharray:5 4;opacity:.7}
 .amview marker path{fill:var(--edge)}
 .amrect{fill:var(--box);stroke:var(--stroke);stroke-width:1.5;filter:drop-shadow(var(--shadow))}
 .amrail{stroke:none}
@@ -79,7 +82,11 @@ body.show-labels .view.dense .amlabel{opacity:1}
 .ambox.dim{opacity:.3}
 .lblbtn{margin-left:8px;background:var(--box);color:var(--ink);border:1px solid var(--stroke);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px}
 .lblbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
-#panel .rel{margin:3px 0}#panel .rel .dir{color:var(--muted);margin-right:5px}
+#panel .rel{margin:7px 0}#panel .rel .dir{color:var(--muted);margin-right:5px}
+#panel .cite{font-size:11px;color:var(--muted);margin:2px 0 0 14px}
+#panel .cite .ck{text-transform:uppercase;letter-spacing:.04em;font-size:10px}
+#panel .cite.uncited{font-style:italic;opacity:.75}
+#panel .cite .cn{margin-top:2px}
 #panel{width:480px;background:var(--panel);border-left:1px solid var(--stroke);padding:16px;overflow:auto;display:none}
 #panel.open{display:block}
 #panel h2{font-size:15px;margin:0 0 4px}
@@ -132,7 +139,14 @@ function openPanel(id){
   if(d.links&&d.links.length){h+='<section><h3>Links</h3>';
     d.links.forEach(l=>{h+='<div><a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label)+'</a></div>';});h+='</section>';}
   if(d.edges&&d.edges.length){h+='<section><h3>Relationships</h3>';
-    d.edges.forEach(r=>{h+='<div class="rel"><span class="dir">'+(r.dir==='out'?'→':'←')+'</span>'+(r.label?esc(r.label)+' ':'')+'<a href="#" data-go="'+esc(r.to)+'">'+esc(r.name)+'</a></div>';});h+='</section>';}
+    d.edges.forEach(r=>{h+='<div class="rel"><span class="dir">'+(r.dir==='out'?'→':'←')+'</span>'+(r.label?esc(r.label)+' ':'')+'<a href="#" data-go="'+esc(r.to)+'">'+esc(r.name)+'</a>';
+      // The citation is authored data: where this relationship is claimed to be realized.
+      if(r.ev){h+='<div class="cite"><span class="ck">'+esc(r.ev.kind)+'</span> <code>'+esc(r.ev.path)+'</code>';
+        if(r.ev.anchors&&r.ev.anchors.length)h+=' '+r.ev.anchors.map(a=>'<code>'+esc(a.fqn)+'</code>').join(' ');
+        if(r.ev.note)h+='<div class="cn">'+esc(r.ev.note)+'</div>';
+        h+='</div>';}
+      else h+='<div class="cite uncited">no citation</div>';
+      h+='</div>';});h+='</section>';}
   p.innerHTML=h;
   p.querySelectorAll('[data-go]').forEach(a=>a.onclick=(e)=>{e.preventDefault();const t=a.getAttribute('data-go');
     const v=document.querySelector('.view[data-view="'+t+'"]');if(v)show(t);openPanel(t);});
@@ -196,7 +210,11 @@ export function render(model) {
         .map((m) => ({ to: m.deploy, label: m.label, name: getNode(model, m.deploy)?.name ?? m.deploy })),
       edges: model.edges.filter((e) => e.from === n.id || e.to === n.id).map((e) => {
         const out = e.from === n.id, other = out ? e.to : e.from;
-        return { dir: out ? "out" : "in", to: other, name: getNode(model, other)?.name ?? other, label: e.label };
+        return {
+          dir: out ? "out" : "in", to: other,
+          name: getNode(model, other)?.name ?? other, label: e.label,
+          ev: e.evidence ?? null,
+        };
       }),
     };
   }
@@ -214,6 +232,12 @@ export function render(model) {
     `<span class="lg kind-${k}"><span class="dot" style="background:var(--k-${k})"></span>${esc(k)}</span>`
   ).join("");
 
+  // Only advertise the citation distinction when the model actually draws both kinds.
+  const anyUncited = model.edges.some((e) => !e.evidence);
+  const citeLegend = anyUncited
+    ? `<span class="lg"><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--edge)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>uncited edge</span>`
+    : "";
+
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -225,7 +249,7 @@ export function render(model) {
 <header><h1>${esc(model.meta.name)}</h1><span class="snapshot">v${esc(model.meta.version)} · ${esc(model.meta.snapshot)}</span>
 <span class="axis-toggle">${axisButtons}</span><button id="lbltoggle" class="lblbtn" title="Show all edge labels">Labels</button><button id="themetoggle" class="lblbtn" title="Toggle light / dark theme">◐</button></header>
 <div id="crumbs"></div>
-<div id="legend">${legend}</div>
+<div id="legend">${legend}${citeLegend}</div>
 <div id="canvas">
 ${svgs}
 </div>

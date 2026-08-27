@@ -30,10 +30,11 @@ worth your time:
 3. **Edge-truth verification — does the code actually have the relationships the model
    claims.** Genuinely hard, and the **only defensible wedge**. Symbol grounding structurally
    cannot produce this signal, and it's where architecture maps actually go fiction.
-   **Half-built (2026-08-25):** edge *citations* (§9.1) ship the authored-claim half — an
-   edge names where it is realized and the resolver falsifies it. The *discovery* half —
-   finding relationships the code has and the map denies — remains unbuilt, and §11 records
-   the measurements behind deferring it. (§10, §11)
+   **Half built, half closed.** Edge *citations* (§9.1) ship the authored-claim half — an edge
+   names where it is realized and the resolver falsifies it. The *discovery* half — finding
+   relationships the code has and the map denies — is **closed**, not queued: §11 records the
+   measurements, and the condition its deferral waited on turned out to be unreachable.
+   (§10, §11)
 
 The through-line: a green grounding check means the **boxes** are honest, never that the
 **map** is. Maps rot at the relationships, not the boxes.
@@ -422,7 +423,7 @@ Verified on this repo: removing the `validate` import from `render.mjs` moves
 
 ---
 
-## 11. Edge truth — partially built
+## 11. Edge truth — half built, half closed
 
 The most valuable drift signal is the one symbol grounding structurally cannot produce.
 **Edge citations (§9.1) build the half that is tractable:** an authored claim about where a
@@ -454,10 +455,25 @@ with bootstrap:** `EDGE_NOT_LEAF` means a drilled container cannot be an edge en
 undrilled one carries `region:{anchors:[]}` and has no symbols — so every edge in a
 bootstrap-generated model would be unverifiable by construction.
 
-Citations do not foreclose that engine; they enable a better version. Once edges carry anchors,
-a later pass can **propose** citations and **corroborate** them ("you cited `X`, but nothing in
-this scope references `X`") — non-circular, because an independently authored claim is being
-contradicted. Revisit with a real corpus, not on this repo.
+**Decision (2026-08-27): the discovery half is closed, not deferred.** Every previous hold on
+this said "revisit once there is a real corpus to measure against". `packages/bootstrap` shipped,
+and the corpus does not materialise: containers with more than 7 exports stay undrilled by
+design, so bootstrap emits **0 components on a Next.js app, 0 on a CDK/Java repo, 2 on a small
+TS monorepo, 7 on archmap itself**. A reconciler needs *pairs of grounded leaves in one
+container*; those models barely contain any. The condition the deferral was waiting for cannot
+be met by the thing that was supposed to produce it.
+
+That removes the last argument for keeping the option open. Combined with the three structural
+objections above — each independent, each fatal on its own — the honest record is a decision
+against, not a queue item. **Do not re-propose this without new information of a kind not
+listed here** (a genuinely independent source of declared edges, or runtime evidence per §11
+paragraph 1). Re-deriving the same measurements is not new information; this has now been
+argued down twice.
+
+What citations *did* buy is narrower and real: because an edge carries an authored anchor, a
+future pass could **corroborate** one ("you cited `X`, but nothing in this scope references
+`X`") without re-deriving the graph. That is a check on a claim, not a discovery engine, and it
+is the only form of this idea that survives the objections.
 
 Don't let a green check convince you the map is honest. Cited edges are *checkable*, never
 *proven*; uncited ones are unchecked; and the undeclared direction is unwatched entirely.
@@ -492,7 +508,7 @@ Don't let a green check convince you the map is honest. Cited edges are *checkab
    about where a relationship is realized, checked by the existing resolver with no new package,
    no new dependency, and no new gate. Honest scope on this repo: **3 of 5 edges machine-checked**
    (the remaining 2 are `person` endpoints, which are not call-verifiable at any level).
-   Static reconciliation stays deferred.
+   Static reconciliation is **closed** as of 2026-08-27, not deferred — see §11.
 
    Current shipped scope is steps 1–2 plus edge citations.
 
@@ -512,5 +528,8 @@ Don't let a green check convince you the map is honest. Cited edges are *checkab
    are architecturally significant — a semantic judgement that §2 reserves for the agent. An
    honest undrilled placeholder is the truthful output.
 
-**The build order is now complete.** What remains is deliberately deferred, not unfinished:
-static edge discovery (§11, with measurements), the deploy axis, and non-JS/TS grounding.
+**The build order is now complete.** Static edge discovery is **closed** (§11). What remains
+open is the deploy axis and non-JS/TS grounding — of which grounding for other languages is the
+one with measured demand: on the repos this was tested against, four of seven are
+overwhelmingly Python and one has no JS/TS at all, so §10.6's "polyglot is where it falls apart"
+is the live limitation, not a theoretical one.

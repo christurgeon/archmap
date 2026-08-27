@@ -1,0 +1,9 @@
+{
+  "name": "@archmap/bootstrap",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "bin": { "archmap-bootstrap": "bootstrap.mjs" },
+  "engines": { "node": ">=22" },
+  "dependencies": { "@archmap/schema": "*", "@archmap/resolve": "*", "@archmap/validate": "*" }
+}

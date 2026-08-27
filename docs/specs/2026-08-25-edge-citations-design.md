@@ -166,7 +166,15 @@ New **warning**:
 
 | Code | Condition |
 |---|---|
-| `EDGE_EVIDENCE_UNANCHORED_PATH` | `kind` ∈ {call, import, test} and `path` names a file the walker cannot parse |
+| `EDGE_EVIDENCE_RESOLVED_AUTHORED` | resolution state hand-written onto the citation (mirrors `LINES_AUTHORED`) |
+
+> **Amended at implementation.** This table originally specced
+> `EDGE_EVIDENCE_UNANCHORED_PATH` — a warning when a symbol citation's `path` names a file the
+> walker cannot parse. It was dropped, for two reasons. `validate` is a pure function of the
+> model with no filesystem access, so it structurally cannot check whether a path is parseable;
+> and the condition is already covered, because a citation whose path is wrong resolves
+> `MISSING`/`MOVED` in `resolve`, which blocks. Implementing it would have meant giving the
+> validator an fs dependency to duplicate an existing check.
 
 Note there is deliberately **no** `EDGE_UNEVIDENCED` error. Requiring evidence on every edge
 would push authors toward fabricated citations — the exact self-certification failure §2.1

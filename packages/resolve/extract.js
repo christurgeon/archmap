@@ -18,36 +18,37 @@ function lines(node) {
   return { startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1 };
 }
 
-function recordFromFunctionish(fqn, kind, declNode, fnNode) {
+function recordFromFunctionish(fqn, kind, declNode, fnNode, exported = false) {
   // fnNode carries parameters + body (the function_declaration itself, or the arrow/function-expression value).
   // No-paren single-param arrows (`x => ...`) expose `parameter` (singular), not `parameters` — fall back so
   // such symbols still get a non-null sigHash (otherwise sig-based RENAMED? recovery is silently unavailable).
   const params = fnNode.childForFieldName("parameters") ?? fnNode.childForFieldName("parameter");
   const body = fnNode.childForFieldName("body");
-  return { fqn, kind, ...lines(declNode), bodyHash: bodyHash(body), sigHash: sigHash(params) };
+  return { fqn, kind, exported, ...lines(declNode), bodyHash: bodyHash(body), sigHash: sigHash(params) };
 }
 
-function collectClass(node, out) {
+function collectClass(node, out, exported = false) {
   const nameNode = node.childForFieldName("name");
   if (!nameNode) return;
   const className = nameNode.text;
   const body = node.childForFieldName("body"); // class_body
-  out.push({ fqn: className, kind: "class", ...lines(node), bodyHash: bodyHash(body), sigHash: null });
+  out.push({ fqn: className, kind: "class", exported, ...lines(node), bodyHash: bodyHash(body), sigHash: null });
   for (let i = 0; i < body.namedChildCount; i++) {
     const m = body.namedChild(i);
     if (m.type !== "method_definition") continue;
     const mName = m.childForFieldName("name");
     if (!mName) continue;
-    out.push(recordFromFunctionish(`${className}.${mName.text}`, "method", m, m));
+    // methods are never independently exported; a class is one unit
+    out.push(recordFromFunctionish(`${className}.${mName.text}`, "method", m, m, false));
   }
 }
 
-function collectDecl(node, out) {
+function collectDecl(node, out, exported = false) {
   if (node.type === "function_declaration") {
     const name = node.childForFieldName("name");
-    if (name) out.push(recordFromFunctionish(name.text, "fn", node, node));
+    if (name) out.push(recordFromFunctionish(name.text, "fn", node, node, exported));
   } else if (node.type === "class_declaration") {
-    collectClass(node, out);
+    collectClass(node, out, exported);
   } else if (node.type === "lexical_declaration" || node.type === "variable_declaration") {
     for (let i = 0; i < node.namedChildCount; i++) {
       const d = node.namedChild(i);
@@ -55,7 +56,7 @@ function collectDecl(node, out) {
       const value = d.childForFieldName("value");
       const name = d.childForFieldName("name");
       if (name && value && FN_VALUE.has(value.type)) {
-        out.push(recordFromFunctionish(name.text, "fn", d, value));
+        out.push(recordFromFunctionish(name.text, "fn", d, value, exported));
       }
     }
   }
@@ -68,10 +69,27 @@ export async function extractSymbols(source, lang) {
     const root = tree.rootNode;
     const out = [];
     const wiring = []; // top-level statements that are not declarations
+    const clauses = []; // { local, exportedAs } from `export { a as b }` (no `from`)
     for (let i = 0; i < root.namedChildCount; i++) {
       const top = root.namedChild(i);
       let node = top;
+      let exported = false;
       if (node.type === "export_statement") {
+        exported = true;
+        // `export { a as b }` declares nothing here; record the mapping for pass 2.
+        // A re-export (`export { x } from "./y"`) has a source and is wiring, not a local decl.
+        const hasSource = !!node.childForFieldName("source");
+        for (let j = 0; j < node.namedChildCount; j++) {
+          const c = node.namedChild(j);
+          if (c.type !== "export_clause" || hasSource) continue;
+          for (let k = 0; k < c.namedChildCount; k++) {
+            const spec = c.namedChild(k);
+            if (spec.type !== "export_specifier") continue;
+            const nm = spec.childForFieldName("name");
+            const alias = spec.childForFieldName("alias");
+            if (nm) clauses.push({ local: nm.text, exportedAs: (alias ?? nm).text });
+          }
+        }
         // unwrap to the inner declaration (export function/class/const ...)
         let decl = node.childForFieldName("declaration");
         if (!decl) {
@@ -84,8 +102,17 @@ export async function extractSymbols(source, lang) {
         // barrel file re-exports, and a binder that ignores it loses the dependency entirely.
         if (decl) node = decl; else { wiring.push(top); continue; }
       }
-      if (DECL_TYPES.has(node.type)) collectDecl(node, out);
+      if (DECL_TYPES.has(node.type)) collectDecl(node, out, exported);
       else wiring.push(top);
+    }
+
+    // Pass 2: `export { a }` marks a's declaration exported; `export { a as b }` records it
+    // under the EXPORTED name, since that is the name the outside world depends on (§7.1).
+    for (const { local, exportedAs } of clauses) {
+      const rec = out.find((r) => r.fqn === local);
+      if (!rec) continue;
+      rec.exported = true;
+      rec.fqn = exportedAs;
     }
 
     if (wiring.length) {

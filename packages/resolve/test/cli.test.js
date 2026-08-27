@@ -16,14 +16,27 @@ function scratchRepo(model, files) {
   writeFileSync(join(dir, "model.json"), JSON.stringify(model, null, 2));
   return dir;
 }
-function run(dir, args = []) {
+function once(dir, args) {
+  // timeout: without it a wedged child blocks execFileSync forever — the test never fails,
+  // it just stops, and killing the runner orphans the child (whose argv doesn't match a
+  // `node --test` pkill, so it lingers and starves later runs). Fail loudly instead.
   try {
-    // timeout: without it a wedged child blocks execFileSync forever — the test never fails,
-    // it just stops, and killing the runner orphans the child (whose argv doesn't match a
-    // `node --test` pkill, so it lingers and starves later runs). Fail loudly instead.
     const out = execFileSync("node", [cli, join(dir, "model.json"), ...args], { encoding: "utf8", cwd: repoRoot, timeout: 30000, env: { ...process.env, ARCHMAP_NOW: "2026-06-24T00:00:00Z" } });
     return { code: 0, out };
-  } catch (e) { return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? "") }; }
+  } catch (e) {
+    return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? ""), timedOut: e.killed || e.code === "ETIMEDOUT" };
+  }
+}
+
+// One retry, and ONLY on a timeout. web-tree-sitter's Parser.init() intermittently never
+// settles (spec §9, CLAUDE.md); measured at roughly 1 run in 12 even with a serial runner.
+// resolve.mjs carries a watchdog for this in production — here the wedge would otherwise be
+// an ~8% spurious red build, which trains people to ignore CI. A non-timeout failure is a
+// real failure and is never retried, so this cannot mask a genuine regression.
+function run(dir, args = []) {
+  const first = once(dir, args);
+  if (!first.timedOut) return first;
+  return once(dir, args);
 }
 const model = (nodes) => ({ meta: { name: "t", version: "1", snapshot: "s" }, nodes, edges: [], mappings: [] });
 
@@ -94,4 +107,32 @@ test("AMBIGUOUS: fqn defined in two files — blocks with exit 1", () => {
   const r = run(dir);
   assert.equal(r.code, 1);
   assert.match(r.out, /AMBIGUOUS/);
+});
+
+// `config` evidence was unit-tested but never exercised through the CLI, so the
+// pathExists predicate resolve.mjs supplies was untested against a real filesystem.
+test("config citation: path present -> CLEAN exit 0; path gone -> MISSING exit 1", () => {
+  const withEdge = (evPath) => ({
+    meta: { name: "t", version: "1", snapshot: "s" },
+    nodes: [
+      { id: "a", name: "A", kind: "component", parent: null, axis: "logical",
+        grounding: { repo: "r", path: "src/h.js", symbol: { fqn: "handle", kind: "fn" } } },
+      { id: "b", name: "B", kind: "component", parent: null, axis: "logical",
+        grounding: { repo: "r", path: "src/h.js", symbol: { fqn: "other", kind: "fn" } } },
+    ],
+    edges: [{ from: "a", to: "b", label: "routes to",
+      evidence: { kind: "config", path: evPath, anchors: [] } }],
+    mappings: [],
+  });
+  const src = { "src/h.js": "export function handle(){}\nexport function other(){}\n" };
+
+  const ok = scratchRepo(withEdge("src/h.js"), src);
+  const good = run(ok);
+  assert.equal(good.code, 0, good.out);
+  assert.match(good.out, /CLEAN/);
+
+  const bad = scratchRepo(withEdge("k8s/does-not-exist.yaml"), src);
+  const gone = run(bad);
+  assert.equal(gone.code, 1, "a config citation pointing at a vanished file must block");
+  assert.match(gone.out, /MISSING/);
 });

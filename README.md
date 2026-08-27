@@ -12,6 +12,8 @@ The source of truth is `model.json`; the rendered HTML is a pure function of it.
 - `packages/schema` — model shape + the edit-operation API (the agent's only surface)
 - `packages/validate` — the gate; errors block render, warnings are reviewed
 - `packages/render` — pure `model.json` → self-contained `archmap.html`
+- `packages/resolve` — grounding resolver; checks boxes and cited edges against real code
+- `packages/bootstrap` — point it at a repo, get a conservative draft `model.json`
 
 ## Install (Node >= 22)
 
@@ -53,6 +55,19 @@ rm -rf "$HOME/.nvm"
 
 `node_modules` holds the workspace symlinks plus resolve's tree-sitter parsers (~55 MB).
 Deleting it is safe and instantly reversible with `npm install`.
+
+## Cold start — draft a model for a repo
+
+```bash
+node packages/bootstrap/bootstrap.mjs <target-repo> [--snapshot YYYY-MM-DD]
+```
+
+Emits a conservative draft that is **valid by construction**: it self-checks against `validate`
+and `resolve` as subprocesses and refuses to write a model that fails either. It is not trying
+to be smart, it is trying to be *honest* — libraries get no box, a container with more than 7
+exported symbols stays undrilled rather than having 7 picked for it, and the deferred tail is
+always logged, never silently dropped. The agent refines the draft from there through the
+edit-ops.
 
 ## Grounding resolver (Phase 2)
 

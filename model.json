@@ -74,12 +74,12 @@
         },
         "resolved": {
           "path": "packages/schema/index.js",
-          "startLine": 64,
-          "endLine": 74,
+          "startLine": 72,
+          "endLine": 82,
           "bodyHash": "f3ff0023a56ebe3765dc8b1fc51cc64c13b6d9bb65f8afcb81a7650e5d75f61c",
           "resolvedAt": "2026-08-25T00:00:00Z"
         },
-        "lines": "64-74"
+        "lines": "72-82"
       }
     },
     {

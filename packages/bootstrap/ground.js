@@ -1,14 +1,12 @@
 import { slug } from "./detect.js";
 
-// Pure (§5). Uses the prebuilt index; never re-walks. This module carries the package's
-// riskiest logic -- the export filter, id namespacing, the cap, and the undrilled fallback.
+// Pure. Uses the prebuilt index, never re-walks. Carries the package's riskiest logic:
+// the export filter, id namespacing, the cap, and the undrilled fallback.
 export const MAX_COMPONENTS = 7;
 
-// Why 7 and not higher: validate caps fan-out at 7 soft / 14 hard, so drilling a 12-export
-// container into 12 components would emit a model that warns. Emitting an arbitrary 7 of 12
-// instead would be the deterministic layer choosing which symbols are architecturally
-// significant -- a semantic judgement, which the one architectural rule reserves for the agent.
-// An honest undrilled placeholder is the truthful output; the agent refines it with judgement.
+// Why 7, not higher: validate's fan-out cap is 7 soft / 14 hard. Picking an arbitrary 7 of
+// 12 exports would be the deterministic layer making a semantic choice — reserved for the
+// agent by the one architectural rule. An honest "undrilled" placeholder is the truthful output.
 
 function componentId(containerId, containerPath, symbolPath, fqn) {
   const rel = symbolPath.startsWith(containerPath + "/")

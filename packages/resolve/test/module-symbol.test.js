@@ -4,9 +4,8 @@ import { extractSymbols, MODULE_FQN } from "../extract.js";
 
 const mod = (syms) => syms.find((s) => s.fqn === MODULE_FQN);
 
-// The gap this closes: composition roots (CLI entry points, main(), DI wiring) are top-level
-// statement code, which yields no declarations — so the relationships wired there had nothing
-// to anchor. Measured on this repo: render.mjs, validate.mjs, resolve.mjs all extracted zero.
+// Composition roots (CLI entry, main(), DI wiring) are top-level statements, not declarations
+// — measured on this repo, render.mjs/validate.mjs/resolve.mjs extracted zero without this.
 test("a file of top-level statements yields a module symbol", async () => {
   const src = `
 import { validate } from "./index.js";
@@ -29,8 +28,8 @@ test("the module hash covers wiring, and ignores declaration bodies", async () =
   assert.equal(h1, h2, "stable for identical wiring");
   assert.notEqual(h1, h3, "changing the wiring changes the hash");
 
-  // Editing a function BODY is node-level drift, already covered by that symbol's own hash.
-  // The module hash must not fire on it, or every edit trips every edge in the file.
+  // A function body edit is node-level drift already; the module hash must ignore it
+  // or every edit trips every edge in the file.
   const withDecl = (body) => `import { a } from "./a.js";\nexport function f(){ ${body} }\na(1);\n`;
   assert.equal(
     mod(await extractSymbols(withDecl("return 1;"), "js")).bodyHash,

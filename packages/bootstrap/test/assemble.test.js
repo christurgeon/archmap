@@ -17,8 +17,8 @@ const undrilledC = (id, reason = "why") => ({
   id, name: id, path: `pkg/${id}`, lang: "js", undrilled: true, reason, components: [],
 });
 
-// THE central promise of the package: valid by construction (§13.1). validate is a cheap
-// pure call, so this guards every future heuristic change.
+// THE central promise of the package: valid by construction. validate is cheap and pure,
+// so this guards every future heuristic change.
 test("every fixture assembles to a model validate accepts with zero errors", () => {
   const fixtures = [
     [],
@@ -86,8 +86,7 @@ test("v1 emits no edges and no mappings", () => {
   assert.deepEqual(model.mappings, []);
 });
 
-// A single-package repo's container is the repo root, whose repo-relative path is "".
-// validate treats an empty path as missing, so the assembler must normalize it.
+// repo root's path is "" — validate treats empty as missing, so assemble must normalize it.
 test("a root container grounds to '.', not the empty string", () => {
   const rootC = { id: "pkg-solo", name: "solo", path: "", lang: "js", undrilled: true, reason: "why", components: [] };
   const model = assemble({ meta, system, containers: [rootC] });

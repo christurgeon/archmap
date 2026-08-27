@@ -9,7 +9,7 @@ import { detectDeployables, slug } from "./detect.js";
 import { groundContainer } from "./ground.js";
 import { assemble } from "./assemble.js";
 
-// The CLI owns every side effect (§5): disk writes, subprocesses, and reading git.
+// The CLI owns every side effect: disk writes, subprocesses, and reading git.
 const here = dirname(fileURLToPath(import.meta.url));
 const VALIDATE = resolvePath(here, "../validate/validate.mjs");
 const RESOLVE = resolvePath(here, "../resolve/resolve.mjs");
@@ -27,10 +27,9 @@ if (!targetArg) {
 const targetRoot = resolvePath(targetArg);
 if (!existsSync(targetRoot)) { console.error(`bootstrap: no such directory: ${targetRoot}`); process.exit(2); }
 
-// Default out INSIDE the target root, so resolve's repoRoot = dirname(modelPath) is correct by
-// construction. An out-of-tree out would self-check green against the temp and then mis-root at
-// real invocation, shipping a model that fails resolve — worse than no self-check, since it
-// looks green (§9).
+// out defaults inside targetRoot so resolve's repoRoot = dirname(modelPath) is correct.
+// Out-of-tree would self-check green against the temp, then mis-root at real use and ship
+// a model that fails resolve — worse than no self-check, because it looked fine.
 const out = positional[1] ? resolvePath(targetRoot, positional[1]) : join(targetRoot, "model.json");
 const relOut = relative(targetRoot, out);
 if (relOut.startsWith("..") || isAbsolute(relOut)) {
@@ -80,8 +79,8 @@ const model = assemble({
   log,
 });
 
-// Self-check against a temp file INSIDE targetRoot, so resolve roots at the right tree.
-// A bootstrap bug must never ship an invalid model.
+// Self-check runs against a temp file inside targetRoot; a bootstrap bug must never ship
+// an invalid model.
 const temp = join(targetRoot, `.archmap-bootstrap-${process.pid}.json`);
 writeFileSync(temp, JSON.stringify(model, null, 2) + "\n");
 const cleanup = () => { try { unlinkSync(temp); } catch { /* already gone */ } };

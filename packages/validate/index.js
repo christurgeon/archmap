@@ -55,8 +55,7 @@ export function validate(model) {
       const region = n.grounding.region;
       if (region) {
         // The note is what makes a region honest: it states why this concern is not one
-        // symbol. Same role as an edge's `doc` note — required exactly where the machine
-        // cannot check the claim itself.
+        // symbol — same role as an edge's `doc` note, required where the machine can't check.
         if (!region.note) err("REGION_NEEDS_NOTE", "region requires a note explaining why this is not one symbol", n.id);
         if (!Array.isArray(region.anchors)) {
           err("REGION_BAD_ANCHORS", "region.anchors must be an array", n.id);

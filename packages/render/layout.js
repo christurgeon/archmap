@@ -44,11 +44,9 @@ function rectsOverlap(a, b, padX, padY) {
          a.y < b.y + b.h + padY && b.y < a.y + a.h + padY;
 }
 
-// Keeping labels legible and non-overlapping is the renderer's job, not
-// something a model author hand-tunes. Each label starts at the midpoint of
-// its edge's horizontal segment, then nudges vertically (0, +1, -1, +2, -2, …
-// rows) until it clears every box and every already-placed label. Returns the
-// lowest label bottom so the caller can grow the canvas if the stack spills past it.
+// Each label starts at its edge's midpoint, then nudges vertically (0, +1, -1, +2, -2, …
+// rows) until clear of every box and already-placed label. Returns the lowest label
+// bottom so the caller can grow the canvas if the stack spills past it.
 function placeLabels(routed, boxes) {
   const boxRects = boxes.map((b) => ({ x: b.x, y: b.y, w: b.w, h: b.h }));
   const placed = [];

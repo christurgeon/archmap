@@ -34,10 +34,9 @@ export function resolve(anchor, path, index) {
 
 export const SEVERITY = ["CLEAN", "UNBASELINED", "MOVED", "CHANGED", "RENAMED", "RENAMED?", "AMBIGUOUS", "MISSING"];
 
-// The confirm half of §9's batched queue. CHANGED means "identity stable, body moved" — a
-// human reviews it and says yes. Nothing else qualifies: MOVED/RENAMED would re-anchor the
-// symbol, and doing that on a bulk confirm is precisely the silent-rewrite trap §9 forbids.
-// Returns whether it re-baselined, so the caller can report what it confirmed.
+// Confirms a CHANGED anchor only ("identity stable, body moved") — MOVED/RENAMED would
+// re-anchor the symbol, and doing that in a bulk confirm is exactly the silent-rewrite
+// trap this guards against.
 export function rebaseline(anchor, state, hit) {
   if (state !== "CHANGED" || !hit) return false;
   anchor.bodyHash = hit.bodyHash;
@@ -49,9 +48,9 @@ export function worstState(states) {
   return states.reduce((w, s) => (SEVERITY.indexOf(s) > SEVERITY.indexOf(w) ? s : w), "CLEAN");
 }
 
-// Edge citations (design §6). A citation claims WHERE a relationship is realized; this
-// falsifies that claim with the same machinery as node grounding — same states, same ladder.
-// Resolution is returned, never stored (design §3.2): the model holds the claim, not the verdict.
+// A citation claims WHERE a relationship is realized; this falsifies that claim with the
+// same machinery as node grounding. Resolution is returned, never stored — the model
+// holds the claim, not the verdict.
 export function resolveEdgeEvidence(evidence, index, opts = {}) {
   if (!evidence) return { state: "UNEVIDENCED", parts: [] };
 
@@ -91,8 +90,7 @@ export function resolveRegion(region, path, index, opts = {}) {
     const r = resolve(anchor, a.path ?? path, index);
     return { fqn: a.fqn, state: r.state, anchor, hit: r.hit ?? r.to ?? null };
   });
-  // UNBASELINED is no longer folded into CLEAN: "we never recorded what this looked like"
-  // is not the same claim as "it is unchanged", and reporting it as CLEAN is how a region
-  // stayed green through an arbitrary rewrite.
+  // UNBASELINED is not folded into CLEAN: "never recorded a baseline" is a different claim
+  // than "unchanged" — folding it in let a region stay green through an arbitrary rewrite.
   return { state: worstState(parts.map((p) => p.state)), parts };
 }

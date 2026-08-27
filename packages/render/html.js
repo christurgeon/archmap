@@ -17,8 +17,7 @@ export function collectViews(model) {
   return views;
 }
 
-// Two surface sets, one accent identity per kind. The agent never picks a colour
-// (spec §2: colours are renderer-owned geometry); these are the renderer's.
+// Two surface sets, one accent identity per kind — colour is renderer-owned geometry, never authored.
 const DARK = "--bg:#0d1219;--panel:#141b24;--box:#1a2230;--stroke:#2b3543;--ink:#e8eef5;--muted:#8b97a6;--edge:#46586b;--accent:#58a6ff;--shadow:0 1px 2px rgba(0,0,0,.45);"
   + "--k-person:#e0a458;--k-system:#8b7cf0;--k-external:#6b7685;--k-container:#3fb6ac;--k-store:#56c08d;--k-tenant:#a06cd9;--k-component:#58a6ff;--k-cloud:#e0794b;--k-network:#d9a94e;--k-infra:#b56a52;--k-workload:#8fa05a;";
 const LIGHT = "--bg:#f6f8fc;--panel:#ffffff;--box:#ffffff;--stroke:#dce3ec;--ink:#1f2933;--muted:#5b6b7d;--edge:#9aa9ba;--accent:#2f7fd8;--shadow:0 1px 2px rgba(31,41,51,.12);"
@@ -54,8 +53,7 @@ header h1{font-size:15px;margin:0;font-weight:600}
 .view.active{display:block}
 svg.amview{max-width:100%;height:auto}
 .amedge{stroke:var(--edge);stroke-width:1.5}
-/* An uncited edge is a relationship nothing in the code is claimed to realize. Dashed,
-   not red: it is an honest gap in the map, not an error (design §5 — evidence is optional). */
+/* Uncited edge: no code claims to realize it. Dashed, not red — an honest gap, not an error. */
 .amedge.uncited{stroke-dasharray:5 4;opacity:.7}
 .amview marker path{fill:var(--edge)}
 .amrect{fill:var(--box);stroke:var(--stroke);stroke-width:1.5;filter:drop-shadow(var(--shadow))}
@@ -194,8 +192,7 @@ export function render(model) {
   const views = collectViews(model);
   const svgs = views.map((v) => {
     const layout = layoutView(model, v.focusId, v.axis);
-    // Dense views (many labelled edges) start clean and reveal on hover; sparse
-    // views keep their few labels on. The header toggle overrides either way.
+    // Dense views (>6 labelled edges) start with labels hidden until hover; the header toggle overrides.
     const dense = layout.edges.filter((e) => e.label).length > 6 ? " dense" : "";
     return `<div class="view${dense}" data-view="${esc(viewId(v.focusId, v.axis))}" data-axis="${v.axis}">${renderViewSvg(layout)}</div>`;
   }).join("\n");
@@ -225,8 +222,7 @@ export function render(model) {
   const axisButtons = `<button class="active" data-axis="logical">Logical</button>` +
     (hasDeploy ? `<button data-axis="deploy">Deploy</button>` : ``);
 
-  // Legend: the distinct kinds actually present, in canonical order. Dots colour
-  // themselves from the kind vars, so they follow the active theme.
+  // Legend lists only kinds present, in canonical order; dots use the kind vars so they follow theme.
   const present = KINDS.filter((k) => model.nodes.some((n) => n.kind === k));
   const legend = present.map((k) =>
     `<span class="lg kind-${k}"><span class="dot" style="background:var(--k-${k})"></span>${esc(k)}</span>`

@@ -4,9 +4,8 @@ import { langForPath } from "@archmap/resolve/grammar";
 import { parseIgnore } from "@archmap/resolve/ignore";
 import { isTestPath } from "@archmap/resolve/repo-files";
 
-// The only module in this package that reads disk (§5). A generalized sibling of resolve's
-// source-only walker: bootstrap also needs manifests (package.json, Dockerfile), which that
-// walker drops. Same skip discipline, so the two agree about what a repo contains.
+// The only module here that reads disk. Like resolve's source-only walker, but also
+// collects manifests (package.json, Dockerfile); same skip discipline keeps the two in sync.
 const ALWAYS_SKIP = new Set([".git", "node_modules"]);
 const MANIFESTS = new Set([
   "package.json", "Dockerfile", "Containerfile",

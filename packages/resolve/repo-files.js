@@ -8,9 +8,8 @@ import { parseIgnore } from "./ignore.js";
 // this, it never relaxes it — so this change can only ever exclude more, never less.
 const ALWAYS_SKIP = new Set([".git", "node_modules"]);
 
-// Tests are TRACKED, so .gitignore cannot express them — this is the one exclusion that must
-// be convention. Test files import everything they touch, which would bury the signal and
-// (worse) duplicate FQNs into AMBIGUOUS. Reported, never silent.
+// Tests are TRACKED, so .gitignore can't express excluding them — this must be convention.
+// They import everything they touch, which buries the signal and duplicates FQNs into AMBIGUOUS.
 const TEST_PATTERNS = [
   /(^|\/)__tests__\//, /(^|\/)__mocks__\//, /(^|\/)tests?\//, /(^|\/)e2e\//,
   /\.test\.[cm]?[jt]sx?$/, /\.spec\.[cm]?[jt]sx?$/,

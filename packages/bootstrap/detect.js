@@ -1,6 +1,5 @@
-// Pure (§5). Detects DEPLOYABILITY, not directories: a C4 container is a deployable/runnable
-// unit, so a library that ships no entry point does not get a box. The agent promotes one
-// later if it earns it — over-detection is agent-fixable, silent invention is not.
+// Pure. Detects DEPLOYABILITY, not directories — a library with no entry point gets no box.
+// Over-detection is agent-fixable; silent invention is not.
 const WORKSPACE_MANIFESTS = ["lerna.json", "nx.json", "turbo.json"];
 
 function slug(s) {
@@ -14,7 +13,7 @@ function readJson(entry) {
 }
 
 // Signal 3 is a directory CONVENTION, not a deployability check — a library nested under
-// apps/ is still flagged. Weaker than the other two on purpose (§6).
+// apps/ is still flagged, weaker than the other two on purpose.
 function signalsFor(dir, files) {
   const at = (name) => files.find((f) => f.kind === "manifest" && f.name === name && dirOf(f.path) === dir);
   const out = [];
@@ -22,10 +21,8 @@ function signalsFor(dir, files) {
   if (pkg) {
     const j = readJson(pkg);
     if (j && j.bin) out.push("bin");
-    // A long-running entry point is a deployability signal. Added in v1 because the three
-    // original signals demonstrably do NOT carry the single-app archetype §6 claims they do:
-    // a Next.js app has no bin, no Dockerfile and no apps/ prefix — it has a start script.
-    // Measured: without this, the most common repo shape yields a one-node model.
+    // A start/serve script signals a long-running deployable; build/test scripts don't —
+    // e.g. a Next.js app has no bin, Dockerfile, or apps/ prefix, only a start script.
     const scripts = (j && j.scripts) || {};
     if (scripts.start || scripts.serve) out.push("start-script");
   }
@@ -46,7 +43,7 @@ function candidateDirs(files) {
     if (f.kind === "manifest" && (f.name === "package.json" || f.name === "Dockerfile" || f.name === "Containerfile")) {
       dirs.add(dirOf(f.path));
     }
-    // enumerate each immediate subdirectory of apps/ or services/ as its own candidate (§6)
+    // enumerate each immediate subdirectory of apps/ or services/ as its own candidate
     const m = f.path.match(/^((?:apps|services)\/[^/]+)\//);
     if (m) dirs.add(m[1]);
   }
@@ -62,10 +59,9 @@ export function detectDeployables(files) {
   const out = [];
   for (const dir of candidateDirs(files)) {
     const signals = signalsFor(dir, files);
-    if (!signals.length) continue;           // a library: omitted from L2 (§6)
-    // The root CAN be a container: in a single-package repo the whole repo is the deployable,
-    // and §13.3 expects exactly one container for that archetype. The system still wraps it —
-    // a C4 system containing one container is the correct shape, not a redundancy.
+    if (!signals.length) continue;           // a library: omitted from L2
+    // The root can be a container: in a single-package repo the whole repo IS the deployable.
+    // The system still wraps it — a C4 system with one container is correct, not redundant.
     const seg = dir === "" ? rootName(files) : lastSeg(dir);
     out.push({
       id: "pkg-" + slug(seg),
@@ -75,7 +71,7 @@ export function detectDeployables(files) {
       signals,
     });
   }
-  // total order by repo-relative path -- stability alone is not a determinism guarantee (§8)
+  // total order by repo-relative path -- stability alone is not a determinism guarantee
   return out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 

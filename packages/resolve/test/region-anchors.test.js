@@ -21,8 +21,7 @@ test("normalizeRegionAnchors accepts bare strings and passes objects through", (
   assert.deepEqual(normalizeRegionAnchors(undefined), []);
 });
 
-// This is what bootstrap emits for every undrilled container. It previously read CLEAN,
-// because [].every() is vacuously true -- a green check over nothing at all.
+// This is what bootstrap emits for every undrilled container.
 test("an empty region is UNANCHORED, never CLEAN", () => {
   const r = resolveRegion({ anchors: [], note: "undrilled" }, "x.js", fakeIndex([]));
   assert.equal(r.state, "UNANCHORED");
@@ -34,8 +33,8 @@ test("a region with omitted anchors does not crash", () => {
   assert.equal(r.state, "UNANCHORED");
 });
 
-// Previously: no hashes were ever passed, so every anchor was UNBASELINED -> CLEAN_ENOUGH.
-// A region stayed green no matter how completely its bodies were rewritten.
+// Anchors now carry their own hashes, so a rewritten body is caught rather than
+// reading UNBASELINED-as-CLEAN forever.
 test("anchor-carried hashes make a rewritten body CHANGED", () => {
   const idx = fakeIndex([rec("a", "REWRITTEN")]);
   const baselined = { anchors: [{ fqn: "a", kind: "fn", bodyHash: "ORIGINAL" }], note: "x" };

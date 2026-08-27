@@ -16,8 +16,8 @@ test("a well-formed region passes clean", () => {
   assert.deepEqual(validate(m).errors, []);
 });
 
-// spec §3 marks note REQUIRED — it is the forcing function that makes the weak case
-// admit it is weak, exactly as doc evidence does for edges.
+// note is REQUIRED — the forcing function that makes the weak case admit it's weak,
+// exactly as doc evidence does for edges.
 test("REGION_NEEDS_NOTE when the justification is missing", () => {
   const m = withRegion({ anchors: [{ fqn: "a", kind: "fn" }] });
   assert.equal(codes(validate(m).errors).includes("REGION_NEEDS_NOTE"), true);

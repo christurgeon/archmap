@@ -80,9 +80,7 @@ test("layoutView of a childless focus is empty but well-formed", () => {
   assert.ok(v.width > 0 && v.height > 0); // no Math.max(...[]) / -Infinity crash
 });
 
-// Non-overlapping labels are the renderer's guarantee, not a model-author
-// concern. Mirror svg.js's label geometry, preferring the layout-provided
-// lx/ly/lw when present.
+// Mirrors svg.js's label geometry: prefer the layout-provided lx/ly/lw when present.
 const LABEL_H = 18;
 function labelRect(e) {
   const lx = e.lx != null ? e.lx : (e.points[1][0] + e.points[2][0]) / 2;
@@ -92,8 +90,7 @@ function labelRect(e) {
 }
 
 test("edge labels do not overlap each other or boxes", () => {
-  // A hub fanning out to a row of nodes, each edge carrying a wide, aggregated
-  // label — the dense fan-out that otherwise piles labels onto one line.
+  // A hub with wide, aggregated labels — the dense fan-out that otherwise piles labels onto one line.
   const hub = {
     meta: { name: "x", version: "1", snapshot: "s" },
     nodes: [

@@ -113,7 +113,9 @@ export function layoutView(model, focusId, axis) {
     const x1 = a.x + a.w / 2, y1 = a.y + a.h;
     const x2 = b.x + b.w / 2, y2 = b.y;
     const ymid = (y1 + y2) / 2;
-    return { from: e.from, to: e.to, label: e.label, points: [[x1, y1], [x1, ymid], [x2, ymid], [x2, y2]] };
+    // `cited` must survive routing: svg.js styles uncited edges from it, and dropping it
+    // here silently disabled that while the legend still advertised the distinction.
+    return { from: e.from, to: e.to, label: e.label, cited: e.cited, points: [[x1, y1], [x1, ymid], [x2, ymid], [x2, y2]] };
   });
 
   const labelBottom = placeLabels(routed, boxes);

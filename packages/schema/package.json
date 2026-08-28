@@ -1,7 +1,10 @@
 {
   "name": "@archmap/schema",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "index.js",
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

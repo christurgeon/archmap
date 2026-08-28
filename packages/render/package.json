@@ -1,9 +1,17 @@
 {
   "name": "@archmap/render",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "index.js",
-  "bin": { "archmap-render": "render.mjs" },
-  "engines": { "node": ">=22" },
-  "dependencies": { "@archmap/schema": "*", "@archmap/validate": "*" }
+  "bin": {
+    "archmap-render": "render.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@archmap/schema": "*",
+    "@archmap/validate": "*"
+  }
 }

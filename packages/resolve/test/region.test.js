@@ -15,22 +15,22 @@ const rec = (fqn, bodyHash) => ({ fqn, kind: "fn", path: "p.js", startLine: 1, e
 
 test("region is CLEAN only when all anchors are clean", () => {
   const idx = fakeIndex([rec("a", "HA"), rec("b", "HB")]);
-  const region = { anchors: ["a", "b"], note: "the publish path" };
-  const r = resolveRegion(region, null, idx, { hashes: { a: "HA", b: "HB" } });
+  const region = { anchors: [{ fqn: "a", kind: "fn", bodyHash: "HA" }, { fqn: "b", kind: "fn", bodyHash: "HB" }], note: "the publish path" };
+  const r = resolveRegion(region, null, idx);
   assert.equal(r.state, "CLEAN");
   assert.equal(r.parts.length, 2);
 });
 
 test("region takes the worst state when one anchor drifts", () => {
   const idx = fakeIndex([rec("a", "HA")]); // 'b' is gone -> MISSING
-  const region = { anchors: ["a", "b"], note: "x" };
-  const r = resolveRegion(region, null, idx, { hashes: { a: "HA", b: "HB" } });
+  const region = { anchors: [{ fqn: "a", kind: "fn", bodyHash: "HA" }, { fqn: "b", kind: "fn", bodyHash: "HB" }], note: "x" };
+  const r = resolveRegion(region, null, idx);
   assert.equal(r.state, "MISSING");
 });
 
 test("region worst-state picks AMBIGUOUS over CHANGED (pins ordering beyond MISSING)", () => {
   // a -> CHANGED (one hit, baseline mismatch); b -> AMBIGUOUS (fqn appears twice)
   const idx = fakeIndex([rec("a", "HX"), rec("b", "H1"), rec("b", "H2")]);
-  const r = resolveRegion({ anchors: ["a", "b"], note: "x" }, null, idx, { hashes: { a: "HA" } });
+  const r = resolveRegion({ anchors: [{ fqn: "a", kind: "fn", bodyHash: "HA" }, { fqn: "b", kind: "fn" }], note: "x" }, null, idx);
   assert.equal(r.state, "AMBIGUOUS");
 });

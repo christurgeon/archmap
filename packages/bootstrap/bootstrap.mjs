@@ -91,7 +91,7 @@ const cleanup = () => { try { unlinkSync(temp); } catch { /* already gone */ } }
 function selfCheck(label, cli) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      execFileSync("node", [cli, temp], { encoding: "utf8", timeout: 120000, stdio: "pipe" });
+      execFileSync("node", [cli, temp], { encoding: "utf8", timeout: 120000, killSignal: "SIGKILL", stdio: "pipe" });
       return;
     } catch (e) {
       const couldNotRun = e.status === 3 || e.killed || e.code === "ETIMEDOUT";

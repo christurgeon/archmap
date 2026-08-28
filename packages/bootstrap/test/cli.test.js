@@ -12,7 +12,7 @@ const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 function once(args) {
   try {
-    return { code: 0, out: execFileSync("node", [cli, ...args], { encoding: "utf8", timeout: 120000, stdio: "pipe" }) };
+    return { code: 0, out: execFileSync("node", [cli, ...args], { encoding: "utf8", timeout: 120000, killSignal: "SIGKILL", stdio: "pipe" }) };
   } catch (e) {
     return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? ""), timedOut: e.killed || e.code === "ETIMEDOUT" };
   }
@@ -85,7 +85,7 @@ test("the written model independently passes validate and resolve", () => {
   const model = join(dir, "model.json");
   const gate = (bin) => {
     try {
-      execFileSync("node", [resolvePath(repoRoot, bin), model], { encoding: "utf8", timeout: 120000, stdio: "pipe" });
+      execFileSync("node", [resolvePath(repoRoot, bin), model], { encoding: "utf8", timeout: 120000, killSignal: "SIGKILL", stdio: "pipe" });
       return 0;
     } catch (e) { return e.status; }
   };

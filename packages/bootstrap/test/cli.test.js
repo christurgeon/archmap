@@ -10,12 +10,20 @@ import { walkRepo } from "../walk.js";
 const cli = fileURLToPath(new URL("../bootstrap.mjs", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
-function run(args) {
+function once(args) {
   try {
     return { code: 0, out: execFileSync("node", [cli, ...args], { encoding: "utf8", timeout: 120000, stdio: "pipe" }) };
   } catch (e) {
-    return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? "") };
+    return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? ""), timedOut: e.killed || e.code === "ETIMEDOUT" };
   }
+}
+
+// One retry, and only on a timeout — the signature of a wedged tree-sitter init. Bootstrap
+// spawns three of those per run (its own index plus validate and resolve), so it hits the
+// wedge harder than anything else here. A non-timeout failure is real and never retried.
+function run(args) {
+  const first = once(args);
+  return first.timedOut ? once(args) : first;
 }
 
 // walk is the only library module that reads disk, so it gets the one on-disk unit test

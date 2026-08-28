@@ -81,5 +81,5 @@ node packages/resolve/resolve.mjs model.json --confirm   # accept CHANGED bodies
 
 A green check means the **boxes** are honest (the symbols exist and are unchanged) — never that the **map** is. Edge truth (do the relationships in `edges` actually exist) is out of scope here (spec §§10–11).
 
-See `spec.md` for the full design. Phase 1 = schema + validate + render.
+See `spec.md` for the contract and `docs/decisions.md` for the reasoning behind it. Phase 1 = schema + validate + render.
 Grounding resolver (`packages/resolve`) is Phase 2.

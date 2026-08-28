@@ -10,9 +10,13 @@ The shape of the idea is C4 (Context → Container → Component → Code) plus 
 deployment axis. What's specific: agent-authored, surgically editable, grounded to symbols
 (not line ranges), self-contained in one shareable file.
 
-This doc supersedes earlier drafts and transcripts. `validate.mjs` and `resolve.mjs` are
-runnable reference implementations; where they differ from this spec, the spec wins (the
-resolver below is the upgraded design).
+This doc is the **contract**: what archmap is, and what it guarantees. `validate.mjs` and
+`resolve.mjs` are runnable reference implementations; where they differ from this spec, the
+spec wins.
+
+The **reasoning** — why things are shaped this way, the measurements behind each call, and the
+things that were tried and rejected — lives in `docs/decisions.md`. Read that before
+re-proposing anything this doc records as closed.
 
 ---
 
@@ -435,15 +439,10 @@ queue, and DI-resolved dispatch are invisible to it. A real edge-truth engine wo
 static extraction with runtime signals (OpenTelemetry spans, access logs) to confirm
 declared transports.
 
-**Why the static reconciler is deferred, with measurements (2026-08-25).** A reflexion-model
-engine (extract the graph, reconcile against `edges`) was designed and rejected:
-
-| | measured |
-|---|---|
-| reconcilable dependencies on this repo | **1 of 69** extracted (1.4%) |
-| first-party specifiers resolved on a normal TS app | **0 of 112** (79% behind `tsconfig` `paths`, 0 with extensions) |
-| symbol index that was build output on one repo | **94%** |
-| bootstrap-generated corpus | 3 containers, **1 component**, **0 verifiable edge pairs** |
+**Why the static reconciler was rejected.** A reflexion-model engine (extract the graph,
+reconcile against `edges`) was designed and rejected on measurement — 1 of 69 reconcilable
+dependencies here, 0 of 112 first-party specifiers resolved on a normal TS app, 94% of one
+repo's index being build output. Full figures in `docs/decisions.md`.
 
 Three structural objections outlive any implementation effort. **Circularity:** reconciliation
 carries information only when the model is authored *independently* of the extracted graph, and
@@ -455,25 +454,14 @@ with bootstrap:** `EDGE_NOT_LEAF` means a drilled container cannot be an edge en
 undrilled one carries `region:{anchors:[]}` and has no symbols — so every edge in a
 bootstrap-generated model would be unverifiable by construction.
 
-**Decision (2026-08-27): the discovery half is closed, not deferred.** Every previous hold on
-this said "revisit once there is a real corpus to measure against". `packages/bootstrap` shipped,
-and the corpus does not materialise: containers with more than 7 exports stay undrilled by
-design, so bootstrap emits **0 components on a Next.js app, 0 on a CDK/Java repo, 2 on a small
-TS monorepo, 7 on archmap itself**. A reconciler needs *pairs of grounded leaves in one
-container*; those models barely contain any. The condition the deferral was waiting for cannot
-be met by the thing that was supposed to produce it.
+**The discovery half is closed** (decided 2026-08-27) — not deferred pending a corpus, because
+the corpus does not materialise: bootstrap's undrilled containers mean a generated model holds
+0–7 components, and a reconciler needs pairs of grounded leaves inside one container. The
+measurements, and what would count as grounds to re-open this, are in `docs/decisions.md`.
 
-That removes the last argument for keeping the option open. Combined with the three structural
-objections above — each independent, each fatal on its own — the honest record is a decision
-against, not a queue item. **Do not re-propose this without new information of a kind not
-listed here** (a genuinely independent source of declared edges, or runtime evidence per §11
-paragraph 1). Re-deriving the same measurements is not new information; this has now been
-argued down twice.
-
-What citations *did* buy is narrower and real: because an edge carries an authored anchor, a
-future pass could **corroborate** one ("you cited `X`, but nothing in this scope references
-`X`") without re-deriving the graph. That is a check on a claim, not a discovery engine, and it
-is the only form of this idea that survives the objections.
+What survives is narrower: because an edge carries an authored anchor, a pass could
+**corroborate** one ("you cited `X`, but nothing in this scope references `X`") without
+re-deriving a graph. A check on a claim, not a discovery engine.
 
 Don't let a green check convince you the map is honest. Cited edges are *checkable*, never
 *proven*; uncited ones are unchecked; and the undeclared direction is unwatched entirely.
@@ -482,54 +470,20 @@ Don't let a green check convince you the map is honest. Cited edges are *checkab
 
 ## 12. Build order for the repo
 
-1. **schema + validate + render** (§§3–8, 12). The artifact chain. A model authored and
-   edited through the ops, gated, rendered to the self-contained HTML.
-2. **resolve — cheap parts only** (§9): FQN identity, `bodyHash`/`sigHash`, the state machine,
-   RegionAnchor, never-auto-bump + batched confirm. Pluggable index behind tree-sitter for
-   one language first.
-3. **Decide** node-freshness vs edge-truth (§§10–11) before investing further. If edge-truth,
-   that's a separate analysis package and a different (harder, defensible) product.
+1. **schema + validate + render** (§§3–8). The artifact chain: a model authored and edited
+   through the ops, gated, rendered to the self-contained HTML.
+2. **resolve** (§9): FQN identity, `bodyHash`/`sigHash`, the state machine, RegionAnchor,
+   never-auto-bump, batched confirm.
+3. **Edge-truth** (§§10–11): edge citations shipped (§9.1); static discovery is **closed**.
+4. **bootstrap**: target repo → conservative, gate-passing draft
+   (`docs/specs/2026-06-28-repo-bootstrap-design.md`). Emits a draft that is *valid by
+   construction* — it self-checks against `validate` and `resolve` and refuses to write a model
+   that fails either. It does not try to be smart: libraries get no box, a container with more
+   than 7 exported symbols stays undrilled rather than having 7 picked for it, and nothing is
+   silently omitted.
 
-   **Decision (2026-06-25): edge-truth deferred.** A static MVP is mostly noise for this
-   codebase — most architecture edges are deliberate abstractions, not function calls (4 of 5
-   edges in `model.json` have no backing call), and §11's transport blind spot (HTTP/bus/DI)
-   guts the signal for the polyglot target it's ostensibly for. The valuable form is
-   runtime-backed (OpenTelemetry spans / access logs) and should be decided against a real
-   target system, not archmap itself. §§10–11 stay as the analysis behind this hold.
+**All four are shipped.** What remains open is the deploy axis and non-JS/TS grounding.
 
-   **Amendment (2026-08-25): the deferral held; edge citations shipped instead.** An attempt to
-   reverse the 2026-06-25 decision was tested against measurement and failed — the reversal's
-   central argument (that `packages/bootstrap` would produce densely grounded components) is
-   false: bootstrap's ≤7-export drill rule yields 3 containers and **1 component** on this repo,
-   and `EDGE_NOT_LEAF` makes bootstrap edges unverifiable by construction. The June reasoning
-   stands and §11 records the numbers.
-
-   What shipped is the *other* half: **edge citations** (§9.1) — authored, falsifiable claims
-   about where a relationship is realized, checked by the existing resolver with no new package,
-   no new dependency, and no new gate. Honest scope on this repo: **3 of 5 edges machine-checked**
-   (the remaining 2 are `person` endpoints, which are not call-verifiable at any level).
-   Static reconciliation is **closed** as of 2026-08-27, not deferred — see §11.
-
-   Current shipped scope is steps 1–2 plus edge citations.
-
-4. **bootstrap — the author-side on-ramp** (`docs/specs/2026-06-28-repo-bootstrap-design.md`,
-   implemented 2026-08-27). The maintain half (schema, validate, render, resolve) had no
-   counterpart: nothing turned a repo into a first model, so every node was hand-authored and
-   the only `model.json` in existence was archmap modelling itself. `bootstrap` closes that
-   cold-start, emitting a conservative draft that is **valid by construction** — it self-checks
-   against `validate` and `resolve` as subprocesses and refuses to write a model that fails
-   either. It deliberately does **not** try to be smart: libraries get no box, a container with
-   more than 7 exported symbols stays undrilled rather than having 7 of them picked
-   arbitrarily, and nothing is ever silently omitted.
-
-   **Why the ≤7 drill rule is not arbitrary.** It follows from the fan-out cap in §5.2 (soft 7,
-   hard 14). Drilling a 12-export container into 12 components emits a model that warns; and
-   emitting an arbitrary 7 of the 12 would be the *deterministic layer* deciding which symbols
-   are architecturally significant — a semantic judgement that §2 reserves for the agent. An
-   honest undrilled placeholder is the truthful output.
-
-**The build order is now complete.** Static edge discovery is **closed** (§11). What remains
-open is the deploy axis and non-JS/TS grounding — of which grounding for other languages is the
-one with measured demand: on the repos this was tested against, four of seven are
-overwhelmingly Python and one has no JS/TS at all, so §10.6's "polyglot is where it falls apart"
-is the live limitation, not a theoretical one.
+> **The reasoning behind each of these — including two arguments that were tested and lost —
+> lives in `docs/decisions.md`.** This section states *what* was built; the log states *why*,
+> with the measurements, and what would count as grounds to re-open a closed question.

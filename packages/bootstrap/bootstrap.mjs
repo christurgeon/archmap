@@ -85,16 +85,27 @@ const temp = join(targetRoot, `.archmap-bootstrap-${process.pid}.json`);
 writeFileSync(temp, JSON.stringify(model, null, 2) + "\n");
 const cleanup = () => { try { unlinkSync(temp); } catch { /* already gone */ } };
 
-for (const [label, cli] of [["validate", VALIDATE], ["resolve", RESOLVE]]) {
-  try {
-    execFileSync("node", [cli, temp], { encoding: "utf8", timeout: 120000, stdio: "pipe" });
-  } catch (e) {
-    console.error(`bootstrap: self-check failed at ${label} (exit ${e.status})`);
-    console.error((e.stdout ?? "") + (e.stderr ?? ""));
-    cleanup();
-    process.exit(1);
+// A self-check that COULD NOT RUN is not a self-check that failed. resolve exits 3 when its
+// index stalls on a wedged tree-sitter init, and execFileSync reports a kill on timeout —
+// both mean "no verdict", so retry once rather than refusing to write a sound model.
+function selfCheck(label, cli) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      execFileSync("node", [cli, temp], { encoding: "utf8", timeout: 120000, stdio: "pipe" });
+      return;
+    } catch (e) {
+      const couldNotRun = e.status === 3 || e.killed || e.code === "ETIMEDOUT";
+      if (couldNotRun && attempt === 0) continue;
+      console.error(couldNotRun
+        ? `bootstrap: self-check could not run at ${label} — see ARCHMAP_TIMEOUT_MS`
+        : `bootstrap: self-check failed at ${label} (exit ${e.status})`);
+      console.error((e.stdout ?? "") + (e.stderr ?? ""));
+      cleanup();
+      process.exit(1);
+    }
   }
 }
+for (const [label, cli] of [["validate", VALIDATE], ["resolve", RESOLVE]]) selfCheck(label, cli);
 
 try {
   renameSync(temp, out);

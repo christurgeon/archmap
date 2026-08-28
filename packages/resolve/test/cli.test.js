@@ -21,7 +21,7 @@ function once(dir, args) {
   // just stops, and killing the runner orphans the child (its argv doesn't match a
   // `node --test` pkill, so it lingers and starves later runs).
   try {
-    const out = execFileSync("node", [cli, join(dir, "model.json"), ...args], { encoding: "utf8", cwd: repoRoot, timeout: 30000, env: { ...process.env, ARCHMAP_NOW: "2026-06-24T00:00:00Z" } });
+    const out = execFileSync("node", [cli, join(dir, "model.json"), ...args], { encoding: "utf8", cwd: repoRoot, timeout: 30000, killSignal: "SIGKILL", env: { ...process.env, ARCHMAP_NOW: "2026-06-24T00:00:00Z" } });
     return { code: 0, out };
   } catch (e) {
     return { code: e.status, out: (e.stdout ?? "") + (e.stderr ?? ""), timedOut: e.killed || e.code === "ETIMEDOUT" };

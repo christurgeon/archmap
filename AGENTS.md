@@ -64,4 +64,5 @@ exactly when drift happened somewhere it wasn't watching.
 `ARCHMAP_TIMEOUT_MS` on very large repos. Bootstrap spawns three tree-sitter inits per run (its
 own index plus validate and resolve), so it hits the wedge hardest: its self-check retries once
 when a subprocess reports "could not run" (exit 3 or a timeout), and never when it reports a
-real failure.
+real failure. Every spawn sets `killSignal: "SIGKILL"` — the default SIGTERM does not reach a
+process wedged in WASM init, so a timeout without it leaks the child instead of killing it.

@@ -4,6 +4,7 @@
 [![resolve](https://github.com/christurgeon/archmap/actions/workflows/resolve.yml/badge.svg)](https://github.com/christurgeon/archmap/actions/workflows/resolve.yml)
 [![node](https://img.shields.io/badge/node-%3E%3D22-3c873a?logo=node.js&logoColor=white)](https://nodejs.org)
 [![model](https://img.shields.io/badge/model-C4-8b5cf6)](spec.md)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A self-contained, navigable architecture map an agent authors and maintains.
 The source of truth is `model.json`; the rendered HTML is a pure function of it.
@@ -83,3 +84,7 @@ A green check means the **boxes** are honest (the symbols exist and are unchange
 
 See `spec.md` for the contract and `docs/decisions.md` for the reasoning behind it. Phase 1 = schema + validate + render.
 Grounding resolver (`packages/resolve`) is Phase 2.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -1,6 +1,7 @@
 {
   "name": "@archmap/resolve",
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "main": "resolve.js",
   "bin": {

@@ -1,8 +1,8 @@
 # archmap
 
+[![validate](https://github.com/christurgeon/archmap/actions/workflows/validate.yml/badge.svg)](https://github.com/christurgeon/archmap/actions/workflows/validate.yml)
+[![resolve](https://github.com/christurgeon/archmap/actions/workflows/resolve.yml/badge.svg)](https://github.com/christurgeon/archmap/actions/workflows/resolve.yml)
 [![node](https://img.shields.io/badge/node-%3E%3D22-3c873a?logo=node.js&logoColor=white)](https://nodejs.org)
-[![runtime deps](https://img.shields.io/badge/runtime%20deps-schema%2Fvalidate%2Frender%3A%20zero-2563eb)](#install-node--22)
-[![tests](https://img.shields.io/badge/tests-passing-3c873a)](packages)
 [![model](https://img.shields.io/badge/model-C4-8b5cf6)](spec.md)
 
 A self-contained, navigable architecture map an agent authors and maintains.

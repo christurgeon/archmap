@@ -74,10 +74,7 @@ export function resolveEdgeEvidence(evidence, index, opts = {}) {
   return { state: worstState(parts.map((p) => p.state)), parts };
 }
 
-export function resolveRegion(region, path, index, opts = {}) {
-  // Anchors carry their own hashes now (see normalizeRegionAnchors). `opts.hashes` remains
-  // as a fallback for callers holding baselines outside the anchor.
-  const hashes = opts.hashes ?? {};
+export function resolveRegion(region, path, index) {
   const anchors = normalizeRegionAnchors(region?.anchors);
 
   // A region with no anchors claims nothing, so it cannot be CLEAN. It used to be, because
@@ -86,9 +83,8 @@ export function resolveRegion(region, path, index, opts = {}) {
   if (anchors.length === 0) return { state: "UNANCHORED", parts: [] };
 
   const parts = anchors.map((a) => {
-    const anchor = { ...a, bodyHash: a.bodyHash ?? hashes[a.fqn] };
-    const r = resolve(anchor, a.path ?? path, index);
-    return { fqn: a.fqn, state: r.state, anchor, hit: r.hit ?? r.to ?? null };
+    const r = resolve(a, a.path ?? path, index);
+    return { fqn: a.fqn, state: r.state, anchor: a, hit: r.hit ?? r.to ?? null };
   });
   // UNBASELINED is not folded into CLEAN: "never recorded a baseline" is a different claim
   // than "unchanged" — folding it in let a region stay green through an arbitrary rewrite.

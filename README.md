@@ -9,9 +9,27 @@
 A self-contained, navigable architecture map an agent authors and maintains.
 The source of truth is `model.json`; the rendered HTML is a pure function of it.
 
+## Quick start: map a repo with an agent
+
+```bash
+npm install                                                    # in this checkout
+node packages/bootstrap/bootstrap.mjs /path/to/repo            # conservative draft model.json
+```
+
+Then hand your coding agent this prompt:
+
+> Read `<archmap>/docs/authoring.md` and follow it to finish the architecture map at
+> `/path/to/repo/model.json`. Edit only through `packages/edit/edit.mjs`, keep every view to
+> 7 or fewer boxes, draw only the relationships a newcomer needs, and stop when the done
+> checklist passes. Render to `/path/to/repo/archmap.html`.
+
+Open `archmap.html`: click a box to drill in (the badge shows how many children it has), hover
+a box or an edge to isolate its connections, and press `Esc` to close the panel or go up a level.
+
 ## Layout
 - `packages/schema` — model shape + the edit-operation API (the agent's only surface)
 - `packages/validate` — the gate; errors block render, warnings are reviewed
+- `packages/edit` — apply a JSON batch of edit ops, gated by validate (the agent's write path)
 - `packages/render` — pure `model.json` → self-contained `archmap.html`
 - `packages/resolve` — grounding resolver; checks boxes and cited edges against real code
 - `packages/bootstrap` — point it at a repo, get a conservative draft `model.json`

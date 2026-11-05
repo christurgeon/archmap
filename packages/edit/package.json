@@ -1,0 +1,17 @@
+{
+  "name": "@archmap/edit",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "archmap-edit": "edit.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@archmap/schema": "*",
+    "@archmap/validate": "*"
+  }
+}

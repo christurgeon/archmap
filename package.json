@@ -14,6 +14,8 @@
     "test": "node --test --test-concurrency=1",
     "validate": "node packages/validate/validate.mjs",
     "render": "node packages/render/render.mjs",
-    "resolve": "node packages/resolve/resolve.mjs"
+    "resolve": "node packages/resolve/resolve.mjs",
+    "edit": "node packages/edit/edit.mjs",
+    "bootstrap": "node packages/bootstrap/bootstrap.mjs"
   }
 }

@@ -29,6 +29,7 @@ tree-sitter WASM parsers. The packages form a one-way chain — later ones depen
 
 - `packages/schema` — model shape + the edit-operation API. **This is the agent's only write surface.**
 - `packages/validate` — the gate; errors block render, warnings are reviewed.
+- `packages/edit` — the schema ops as a JSON batch: applied all-or-nothing, validated, written only at zero errors.
 - `packages/render` — pure `model.json` → self-contained `archmap.html`. **Never hand-edit the agent's model through the renderer.**
 - `packages/resolve` — grounding resolver (spec §9); checks each grounded leaf still points at a real JS/TS symbol and reports drift, including edge citations.
 - `packages/bootstrap` — target repo → conservative draft `model.json`, valid by construction (self-checks against validate + resolve before writing).
@@ -42,6 +43,7 @@ node --test packages/render/test/layout.test.js        # one test file
 node --test --test-name-pattern="<regex>"              # tests matching a name
 
 node packages/validate/validate.mjs model.json         # the gate (run before relying on a model)
+node packages/edit/edit.mjs model.json ops.json [--dry-run]   # gated batch of edit ops (`-` = stdin)
 node packages/render/render.mjs model.json archmap.html
 node packages/resolve/resolve.mjs model.json           # check grounding + edge citations; exit 1 on MISSING/AMBIGUOUS
 node packages/resolve/resolve.mjs model.json --write   # establish baselines / write derived fields
@@ -55,9 +57,12 @@ CI runs `npm test` + validate + resolve on every PR and on push to `main`. Resol
 filter on purpose: citations anchor into arbitrary files, so a filter would skip the run
 exactly when drift happened somewhere it wasn't watching.
 
+Mapping some *other* repo (rather than changing archmap)? Follow `docs/authoring.md`.
+
 ## Working in this repo
 
-- Edit models only through `@archmap/schema`'s operations, then run validate. Don't write `model.json` fields ad hoc.
+- Edit models only through `@archmap/schema`'s operations (`packages/edit` takes them as JSON), then run validate. Don't write `model.json` fields ad hoc.
+- The renderer's layout (`packages/render/layout.js`) is a layered layout with tested properties: no edge crosses a box it doesn't connect, no two edges share a line, cycles don't inflate the layering. Keep `layout.test.js` green on any change; screenshot a dense view before calling it done.
 - A green resolve check means the **boxes** are honest (symbols exist and are unchanged), and that **cited** edges still point at live code. It does not mean the map is true: uncited edges are unchecked, `doc` citations are checked by nothing, and relationships the code has but the model omits are invisible entirely (spec §§10.5, 11).
 - The index only sees what git tracks — exclusions come from `.gitignore`, plus tests and `.d.ts` by convention.
 - `npm test` runs serially (`--test-concurrency=1`). `web-tree-sitter`'s `Parser.init()` intermittently never settles when several processes initialize WASM at once (measured: 3–4 of 12 concurrent runs wedge forever, 0 of 15 serial), which made the suite flake roughly 1 run in 5. Resolve carries a watchdog for the same reason and exits 3 if the index stalls; raise

@@ -53,7 +53,13 @@ function candidateDirs(files) {
 export function detectDeployables(files) {
   const langOf = (dir) => {
     const src = files.filter((f) => f.kind === "source" && (dir === "" || f.path.startsWith(dir + "/")));
-    return src.length ? src[0].lang : null;
+    // the majority language, not the first file's: a TS app whose alphabetically-first
+    // file is a JS config must not be labelled JS. Ties keep first-seen (deterministic).
+    const counts = new Map();
+    for (const f of src) counts.set(f.lang, (counts.get(f.lang) ?? 0) + 1);
+    let best = null;
+    for (const [lang, n] of counts) if (best === null || n > counts.get(best)) best = lang;
+    return best;
   };
 
   const out = [];

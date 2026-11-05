@@ -9,6 +9,33 @@ count as grounds to revisit.
 
 ---
 
+## 2026-11-05 — render: a real layered layout, still zero-dependency
+
+**Decided:** replace the naive layout (longest-path rows, every edge bent at one shared
+mid-gap line) with a small Sugiyama-style pipeline in `layout.js`. Don't pull in elk.
+
+**Evidence.** On a 7-container model with one request/ack cycle, the old layering kept
+incrementing around the cycle and put the container view 3,092px tall, with five of seven
+boxes off-screen. Long edges ran straight through intermediate boxes. All edges between two
+rows shared a single horizontal line, so "which box does this go to" had no answer. The
+existing cycle test only asserted the result was finite, so it passed.
+
+**What shipped:** DFS cycle breaking (reversed edges still point at their real target), dummy
+nodes so long edges route around boxes, barycenter crossing reduction, isotonic-regression x
+placement, and a separate track per horizontal run. Each guarantee has a test: no edge through
+a box it doesn't connect, no two edges sharing a line, bounded height under cycles. Layout
+stays deterministic and takes about 40ms for 14 boxes and 120 edges.
+
+**Why not elk:** it would be the renderer's first runtime dependency (well over a megabyte of JS) in a
+package whose contract is zero deps, and the views it lays out are capped at 14 boxes. Revisit
+if a real model needs something this pipeline can't do, such as ports on box sides or nested
+boundary layout.
+
+**Paired with a gate:** `VIEW_DENSE` warns past 2 relationships per box. Layout makes a dense
+view legible, and only the author can make it readable.
+
+---
+
 ## 2026-08-27 — static edge discovery: closed, not deferred
 
 **Decided:** the *discovery* half of edge-truth — finding relationships the code has and the map

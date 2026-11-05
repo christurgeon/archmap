@@ -46,6 +46,7 @@ const BLOCKING = new Set(["MISSING", "AMBIGUOUS"]);
 const rows = [];
 let blocked = false;
 let confirmed = 0;
+let baselined = 0;
 
 for (const node of model.nodes) {
   const g = node.grounding;
@@ -58,7 +59,7 @@ for (const node of model.nodes) {
     if (BLOCKING.has(r.state)) blocked = true;
     if (confirm && rebaseline(g.symbol, r.state, where)) confirmed++;
     if ((write || confirm) && where && (r.state === "CLEAN" || r.state === "UNBASELINED" || (confirm && r.state === "CHANGED"))) {
-      if (r.state === "UNBASELINED") { g.symbol.bodyHash = where.bodyHash; g.symbol.sigHash = where.sigHash ?? undefined; }
+      if (r.state === "UNBASELINED") { g.symbol.bodyHash = where.bodyHash; g.symbol.sigHash = where.sigHash ?? undefined; baselined++; }
       g.resolved = { path: where.path, startLine: where.startLine, endLine: where.endLine, bodyHash: where.bodyHash, resolvedAt: now };
       g.lines = `${where.startLine}-${where.endLine}`;
     }
@@ -81,6 +82,7 @@ for (const node of model.nodes) {
         const hit = p.hit ?? null;
         if (write && p.state === "UNBASELINED" && hit) {
           stored.bodyHash = hit.bodyHash;
+          baselined++;
           if (hit.sigHash) stored.sigHash = hit.sigHash;
         }
         if (confirm && rebaseline(stored, p.state, hit)) confirmed++;
@@ -108,6 +110,7 @@ for (const e of model.edges) {
   for (const p of r.parts) {
     if (write && p.state === "UNBASELINED" && p.hit) {
       p.anchor.bodyHash = p.hit.bodyHash;
+      baselined++;
       if (p.hit.sigHash) p.anchor.sigHash = p.hit.sigHash;
     }
     if (confirm && rebaseline(p.anchor, p.state, p.hit)) confirmed++;
@@ -134,6 +137,9 @@ function report(title, list, order) {
   console.log("--- " + (summary.length ? summary.join(", ") : "nothing to check"));
 }
 
+// The report below shows each anchor's state as found, i.e. BEFORE this run wrote anything,
+// so say what --write changed; otherwise freshly baselined anchors read as still pending.
+if (write) console.log(`baselined ${baselined} UNBASELINED anchor(s); the states below are as found, before writing\n`);
 if (confirm) console.log(`confirmed ${confirmed} CHANGED anchor(s) as the new baseline\n`);
 report("nodes", rows, STATE_ORDER);
 report("edges", edgeRows, [...STATE_ORDER, "UNEVIDENCED"]);

@@ -30,11 +30,14 @@ export function promoteEdges(model, focusId, axis) {
     if (!f || !t || f === t) continue;
     if (!childIds.has(f) || !childIds.has(t)) continue;
     const key = `${f}->${t}`;
-    if (!agg.has(key)) agg.set(key, { from: f, to: t, labels: [], cited: true });
+    if (!agg.has(key)) agg.set(key, { from: f, to: t, labels: [], cited: true, count: 0 });
+    agg.get(key).count++;
     if (e.label && !agg.get(key).labels.includes(e.label)) agg.get(key).labels.push(e.label);
     // A promoted edge is only "cited" if EVERY constituent leaf edge carries a citation —
     // bias to surfacing: one unevidenced leaf edge must not hide behind six cited ones.
     if (!e.evidence) agg.get(key).cited = false;
   }
-  return [...agg.values()].map((x) => ({ from: x.from, to: x.to, label: x.labels.join(", "), cited: x.cited }));
+  return [...agg.values()].map((x) => ({
+    from: x.from, to: x.to, label: x.labels.join(", "), labels: x.labels, count: x.count, cited: x.cited,
+  }));
 }

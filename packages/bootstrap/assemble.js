@@ -5,6 +5,9 @@ import { MAX_COMPONENTS } from "./ground.js";
 // fan-out or anchor-completeness — those live in validate, so this module enforces them.
 export const MAX_CONTAINERS = 7;
 
+// `tech` is read by people ("container · TypeScript"), not by the grammar loader.
+const TECH = { js: "JavaScript", jsx: "JavaScript", ts: "TypeScript", tsx: "TypeScript" };
+
 export function assemble({ meta, system, containers, log = () => {} }) {
   const model = createModel(meta);
   addNode(model, { id: system.id, name: system.name, kind: "system", parent: null });
@@ -17,7 +20,7 @@ export function assemble({ meta, system, containers, log = () => {} }) {
   }
 
   for (const c of kept) {
-    addNode(model, { id: c.id, name: c.name, kind: "container", parent: system.id, tech: c.lang ?? undefined });
+    addNode(model, { id: c.id, name: c.name, kind: "container", parent: system.id, tech: TECH[c.lang] ?? c.lang ?? undefined });
 
     if (c.undrilled) {
       // invariant: anchors must be an array, never omitted — an omitted key crashed

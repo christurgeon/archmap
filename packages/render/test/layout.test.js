@@ -56,7 +56,7 @@ test("layoutView produces non-overlapping boxes and routed edges", () => {
   assert.equal(v.boxes.find((b) => b.id === "api").hasChildren, true);
   assert.equal(v.boxes.find((b) => b.id === "db").hasChildren, false);
   assert.equal(v.edges.length, 1);
-  assert.equal(v.edges[0].points.length, 4);
+  assert.ok(v.edges[0].points.length >= 2);
   for (let i = 0; i < v.boxes.length; i++)
     for (let j = i + 1; j < v.boxes.length; j++)
       assert.equal(rectsOverlap(v.boxes[i], v.boxes[j]), false);
@@ -83,8 +83,8 @@ test("layoutView of a childless focus is empty but well-formed", () => {
 // Mirrors svg.js's label geometry: prefer the layout-provided lx/ly/lw when present.
 const LABEL_H = 18;
 function labelRect(e) {
-  const lx = e.lx != null ? e.lx : (e.points[1][0] + e.points[2][0]) / 2;
-  const ly = e.ly != null ? e.ly : e.points[1][1];
+  const lx = e.lx;
+  const ly = e.ly;
   const w = e.lw != null ? e.lw : e.label.length * 6.8 + 12;
   return { x: lx - w / 2, y: ly - LABEL_H / 2, w, h: LABEL_H, label: e.label };
 }
@@ -139,4 +139,111 @@ test("layoutView preserves the cited flag through routing", () => {
   const byTo = Object.fromEntries(view.edges.map((e) => [e.to, e.cited]));
   assert.equal(byTo.b, true, "cited edge");
   assert.equal(byTo.c, false, "uncited edge");
+});
+
+// ---- layout quality: the properties that make a dense view followable
+
+// A container view with a cycle (orders -> notify -> orders), a long edge (web -> db skips
+// two layers) and a hub fan-out — the shapes real systems have.
+function busy() {
+  const n = (id, kind = "container") => ({ id, name: id, kind, parent: "sys", axis: "logical" });
+  return {
+    meta: { name: "x", version: "1", snapshot: "s" },
+    nodes: [
+      { id: "sys", name: "Sys", kind: "system", parent: null, axis: "logical" },
+      n("web"), n("api"), n("orders"), n("catalog"), n("pay"), n("notify"), n("db", "store"),
+    ],
+    edges: [
+      ["web", "api"], ["api", "orders"], ["api", "catalog"], ["api", "pay"], ["orders", "db"],
+      ["catalog", "db"], ["pay", "db"], ["orders", "notify"], ["pay", "notify"], ["notify", "orders"],
+      ["web", "db"], ["notify", "api"],
+    ].map(([from, to]) => ({ from, to, label: "x" })),
+    mappings: [],
+  };
+}
+
+function segments(points) {
+  const out = [];
+  for (let i = 0; i + 1 < points.length; i++) out.push([points[i], points[i + 1]]);
+  return out;
+}
+
+test("cycles do not blow up the layering", () => {
+  const v = layoutView(busy(), "sys", "logical");
+  const rows = new Set(v.boxes.map((b) => b.y)).size;
+  assert.ok(rows <= 5, `expected <= 5 rows for 7 boxes, got ${rows}`);
+  assert.ok(v.height < 900, `height ${v.height}`);
+});
+
+test("routed edges are orthogonal and start/end on their own boxes", () => {
+  const v = layoutView(busy(), "sys", "logical");
+  const box = new Map(v.boxes.map((b) => [b.id, b]));
+  const onBorder = (p, b) => p[0] >= b.x && p[0] <= b.x + b.w && (Math.abs(p[1] - b.y) < 0.2 || Math.abs(p[1] - b.y - b.h) < 0.2);
+  for (const e of v.edges) {
+    for (const [a, b] of segments(e.points)) assert.ok(a[0] === b[0] || a[1] === b[1], "non-orthogonal segment");
+    assert.ok(onBorder(e.points[0], box.get(e.from)), `${e.from}->${e.to} does not start on ${e.from}`);
+    assert.ok(onBorder(e.points.at(-1), box.get(e.to)), `${e.from}->${e.to} does not end on ${e.to}`);
+  }
+});
+
+test("no edge passes through a box it does not connect", () => {
+  const v = layoutView(busy(), "sys", "logical");
+  for (const e of v.edges) {
+    for (const b of v.boxes) {
+      if (b.id === e.from || b.id === e.to) continue;
+      for (const [p, q] of segments(e.points)) {
+        const x0 = Math.min(p[0], q[0]), x1 = Math.max(p[0], q[0]);
+        const y0 = Math.min(p[1], q[1]), y1 = Math.max(p[1], q[1]);
+        const hit = x1 > b.x && x0 < b.x + b.w && y1 > b.y && y0 < b.y + b.h;
+        assert.ok(!hit, `${e.from}->${e.to} crosses box ${b.id}`);
+      }
+    }
+  }
+});
+
+test("no two edges share a line (collinear overlap)", () => {
+  const v = layoutView(busy(), "sys", "logical");
+  const segs = v.edges.flatMap((e, i) => segments(e.points).map((s) => [i, s]));
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      if (segs[i][0] === segs[j][0]) continue;
+      const [[a, b]] = [segs[i][1]], [[c, d]] = [segs[j][1]];
+      if (a[1] === b[1] && c[1] === d[1] && a[1] === c[1]) {
+        const o = Math.min(Math.max(a[0], b[0]), Math.max(c[0], d[0])) - Math.max(Math.min(a[0], b[0]), Math.min(c[0], d[0]));
+        assert.ok(o <= 0, `horizontal overlap at y=${a[1]}`);
+      }
+      if (a[0] === b[0] && c[0] === d[0] && a[0] === c[0]) {
+        const o = Math.min(Math.max(a[1], b[1]), Math.max(c[1], d[1])) - Math.max(Math.min(a[1], b[1]), Math.min(c[1], d[1]));
+        assert.ok(o <= 0, `vertical overlap at x=${a[0]}`);
+      }
+    }
+  }
+});
+
+test("a reversed (cycle-closing) edge still points at its real target", () => {
+  const v = layoutView(busy(), "sys", "logical");
+  const box = new Map(v.boxes.map((b) => [b.id, b]));
+  const e = v.edges.find((x) => x.from === "notify" && x.to === "orders");
+  const end = e.points.at(-1), t = box.get("orders");
+  assert.ok(end[0] >= t.x && end[0] <= t.x + t.w);
+});
+
+test("crossing reduction untangles a twisted bipartite view", () => {
+  // model order a,b / c,d with a->d, b->c: one crossing unless the second row is reordered
+  const m = {
+    meta: { name: "x", version: "1", snapshot: "s" },
+    nodes: ["a", "b", "c", "d"].map((id) => ({ id, name: id, kind: "component", parent: null, axis: "logical" })),
+    edges: [{ from: "a", to: "d", label: "" }, { from: "b", to: "c", label: "" }],
+    mappings: [],
+  };
+  const v = layoutView(m, null, "logical");
+  const x = Object.fromEntries(v.boxes.map((b) => [b.id, b.x]));
+  assert.equal(Math.sign(x.a - x.b), Math.sign(x.d - x.c));
+});
+
+test("aggregated labels collapse to one label and a count", async () => {
+  const { displayLabel } = await import("../layout.js");
+  assert.equal(displayLabel(["reads"]), "reads");
+  assert.equal(displayLabel(["reads", "writes"]), "reads, writes");
+  assert.equal(displayLabel(["SOAP", "syncs stock", "polls"]), "SOAP +2");
 });

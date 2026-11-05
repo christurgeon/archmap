@@ -55,6 +55,7 @@ archmap/
     validate/           # the gate (errors block render; warnings reviewed)
     resolve/            # grounding resolver + the symbol index (tree-sitter / SCIP)
     bootstrap/          # target repo -> conservative, gate-passing draft model.json
+    edit/               # the §6 ops as a JSON batch: all-or-nothing, validated, then written
     render/             # pure model.json -> archmap.html (agent never edits)
   .github/workflows/    # validate + resolve on every PR (resolve is unfiltered: citations
                         # anchor into arbitrary files, so a path filter would skip the check
@@ -209,6 +210,10 @@ setEdgeEvidence(from, to, { kind, path, anchors, note? })   # cite where the edg
 addMapping(logical, deploy, label) | removeMapping(logical, deploy)
 ```
 
+`packages/edit` exposes exactly these as a JSON batch (`[{ "op": "addEdge", "from", "to",
+"label" }, …]`). The batch applies to a copy; if any op throws or the result has a validation
+error, nothing is written. It adds no operation of its own.
+
 ---
 
 ## 7. Validator — the gate
@@ -221,6 +226,9 @@ addMapping(logical, deploy, label) | removeMapping(logical, deploy)
   hierarchy, no duplicates, label within budget, authored at leaf level.
 - Mappings: logical endpoint is logical, deploy endpoint is deploy.
 - Fan-out within limits; groundable leaves carry an anchor (symbol/region/iac).
+- **View density → warning** when a rendered view would draw more than 2 relationships per box
+  (after promotion; views with 8 or fewer never warn). Layout keeps a dense view legible, not
+  readable: the fix is pruning or regrouping, which only the author can do.
 - **`lines` authored by hand → warning** (it is derived output, not input).
 - Regions: `note` required, `anchors` must be an array, each anchor needs an `fqn`. An
   **empty** `anchors` array is legal but **warns** — it is a placeholder that verifies

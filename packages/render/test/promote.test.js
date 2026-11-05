@@ -42,7 +42,7 @@ test("promoteEdges at the sys view aggregates api->db and drops api-internal", (
 test("promoteEdges inside api shows the internal call", () => {
   const e = promoteEdges(model(), "api", "logical");
   // `cited` is false because these fixture edges carry no evidence citation
-  assert.deepEqual(e, [{ from: "h1", to: "h2", label: "calls", cited: false }]);
+  assert.deepEqual(e, [{ from: "h1", to: "h2", label: "calls", labels: ["calls"], count: 1, cited: false }]);
 });
 
 test("promoteEdges at the logical root surfaces cross-system edges", () => {
@@ -59,7 +59,7 @@ test("promoteEdges at the logical root surfaces cross-system edges", () => {
     edges: [{ from: "l1", to: "l2", label: "calls" }],
     mappings: [],
   };
-  assert.deepEqual(promoteEdges(m, null, "logical"), [{ from: "s1", to: "s2", label: "calls", cited: false }]);
+  assert.deepEqual(promoteEdges(m, null, "logical"), [{ from: "s1", to: "s2", label: "calls", labels: ["calls"], count: 1, cited: false }]);
 });
 
 // Bias to surfacing: one unevidenced leaf edge must not hide behind cited ones.

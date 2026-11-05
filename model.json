@@ -74,12 +74,12 @@
         },
         "resolved": {
           "path": "packages/schema/index.js",
-          "startLine": 72,
-          "endLine": 82,
+          "startLine": 71,
+          "endLine": 81,
           "bodyHash": "f3ff0023a56ebe3765dc8b1fc51cc64c13b6d9bb65f8afcb81a7650e5d75f61c",
-          "resolvedAt": "2026-08-25T00:00:00Z"
+          "resolvedAt": "2026-11-05T03:30:51.690Z"
         },
-        "lines": "72-82"
+        "lines": "71-81"
       }
     },
     {
@@ -95,17 +95,17 @@
         "symbol": {
           "fqn": "validate",
           "kind": "fn",
-          "bodyHash": "0da54483225891c4f417ce0f9d390b4b1ea90562db28cff22c2483bbde59cc34",
+          "bodyHash": "3ae44ca54eceae490ee0c9750ec7a93612e1f0c9ebf0044da1243a763a196675",
           "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
         },
         "resolved": {
           "path": "packages/validate/index.js",
-          "startLine": 24,
-          "endLine": 149,
-          "bodyHash": "0da54483225891c4f417ce0f9d390b4b1ea90562db28cff22c2483bbde59cc34",
-          "resolvedAt": "2026-08-25T00:00:00Z"
+          "startLine": 26,
+          "endLine": 193,
+          "bodyHash": "3ae44ca54eceae490ee0c9750ec7a93612e1f0c9ebf0044da1243a763a196675",
+          "resolvedAt": "2026-11-05T03:30:51.690Z"
         },
-        "lines": "24-149"
+        "lines": "26-193"
       }
     },
     {
@@ -121,17 +121,17 @@
         "symbol": {
           "fqn": "render",
           "kind": "fn",
-          "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
+          "bodyHash": "9e651cd1ff5e92d274bc08e7c74eeda7bfdc04f55ce1265865758cf6124cad23",
           "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
         },
         "resolved": {
           "path": "packages/render/html.js",
-          "startLine": 193,
-          "endLine": 262,
-          "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
-          "resolvedAt": "2026-08-25T00:00:00Z"
+          "startLine": 231,
+          "endLine": 295,
+          "bodyHash": "9e651cd1ff5e92d274bc08e7c74eeda7bfdc04f55ce1265865758cf6124cad23",
+          "resolvedAt": "2026-11-05T03:30:51.690Z"
         },
-        "lines": "193-262"
+        "lines": "231-295"
       }
     },
     {
@@ -147,17 +147,17 @@
         "symbol": {
           "fqn": "layoutView",
           "kind": "fn",
-          "bodyHash": "8b79db990dbc7bcddaab525b3ea5b732ffeaad7e02221b0a388331b6cf6fdb62",
+          "bodyHash": "bd801c3d5138f79aae12764482fc32cda3c5296ded5a043eb5aab985f182638d",
           "sigHash": "24a9f841e12befec5abc145759da871f982000b7d239d104c369c30df4780441"
         },
         "resolved": {
           "path": "packages/render/layout.js",
-          "startLine": 85,
-          "endLine": 125,
-          "bodyHash": "8b79db990dbc7bcddaab525b3ea5b732ffeaad7e02221b0a388331b6cf6fdb62",
-          "resolvedAt": "2026-08-25T00:00:00Z"
+          "startLine": 203,
+          "endLine": 422,
+          "bodyHash": "bd801c3d5138f79aae12764482fc32cda3c5296ded5a043eb5aab985f182638d",
+          "resolvedAt": "2026-11-05T03:30:51.690Z"
         },
-        "lines": "85-125"
+        "lines": "203-422"
       }
     },
     {
@@ -204,7 +204,7 @@
             "fqn": "validate",
             "kind": "fn",
             "path": "packages/validate/index.js",
-            "bodyHash": "0da54483225891c4f417ce0f9d390b4b1ea90562db28cff22c2483bbde59cc34",
+            "bodyHash": "3ae44ca54eceae490ee0c9750ec7a93612e1f0c9ebf0044da1243a763a196675",
             "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
           }
         ]
@@ -228,7 +228,7 @@
             "fqn": "render",
             "kind": "fn",
             "path": "packages/render/html.js",
-            "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
+            "bodyHash": "9e651cd1ff5e92d274bc08e7c74eeda7bfdc04f55ce1265865758cf6124cad23",
             "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
           }
         ]
@@ -246,14 +246,14 @@
             "fqn": "render",
             "kind": "fn",
             "path": "packages/render/html.js",
-            "bodyHash": "34385fea61a69d1bda21b4b954d86327a03867cc95b8bad56d20889cee909dcd",
+            "bodyHash": "9e651cd1ff5e92d274bc08e7c74eeda7bfdc04f55ce1265865758cf6124cad23",
             "sigHash": "e538d9b6d9b45e82863f9a410a4cc16a6d0eab93fb0e474cd2975919fc57c5f7"
           },
           {
             "fqn": "layoutView",
             "kind": "fn",
             "path": "packages/render/layout.js",
-            "bodyHash": "8b79db990dbc7bcddaab525b3ea5b732ffeaad7e02221b0a388331b6cf6fdb62",
+            "bodyHash": "bd801c3d5138f79aae12764482fc32cda3c5296ded5a043eb5aab985f182638d",
             "sigHash": "24a9f841e12befec5abc145759da871f982000b7d239d104c369c30df4780441"
           }
         ]

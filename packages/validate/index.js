@@ -6,6 +6,8 @@ import {
 const EDGE_LABEL_MAX_WORDS = 3;
 const FANOUT_SOFT = 7;
 const FANOUT_HARD = 14;
+const VIEW_EDGES_PER_BOX = 2;
+const VIEW_EDGES_MIN = 8;
 function wordCount(s) { return String(s ?? "").trim().split(/\s+/).filter(Boolean).length; }
 
 function detectCycle(model, id) {
@@ -160,6 +162,31 @@ export function validate(model) {
     const roots = model.nodes.filter((n) => n.parent === null && (n.axis ?? "logical") === axis).length;
     if (roots > FANOUT_HARD) err("FANOUT_HARD", `axis ${axis} root level has ${roots} nodes, exceeds hard cap ${FANOUT_HARD}`, `__root_${axis}`);
     else if (roots > FANOUT_SOFT) warn("FANOUT_SOFT", `axis ${axis} root level has ${roots} nodes, exceeds soft limit ${FANOUT_SOFT}`, `__root_${axis}`);
+  }
+
+  // Density per rendered view: the relationships promotion would draw among a view's boxes.
+  // Layout can make a crowded view legible, not readable — past ~2 lines per box a reader
+  // stops tracing and starts guessing, so say so while the author can still prune.
+  const views = [...AXES.map((axis) => ({ id: null, axis })), ...model.nodes.filter((n) => childrenOf(model, n.id).length).map((n) => ({ id: n.id }))];
+  for (const v of views) {
+    const boxes = v.id === null
+      ? model.nodes.filter((n) => n.parent === null && (n.axis ?? "logical") === v.axis)
+      : childrenOf(model, v.id);
+    const boxIds = new Set(boxes.map((n) => n.id));
+    const lift = (id) => {
+      const seen = new Set();
+      let cur = getNode(model, id);
+      while (cur && !boxIds.has(cur.id) && cur.parent !== null && !seen.has(cur.id)) { seen.add(cur.id); cur = getNode(model, cur.parent); }
+      return cur && boxIds.has(cur.id) ? cur.id : null;
+    };
+    const pairs = new Set();
+    for (const e of model.edges) {
+      const f = lift(e.from), t = lift(e.to);
+      if (f && t && f !== t) pairs.add(`${f}->${t}`);
+    }
+    if (pairs.size > VIEW_EDGES_MIN && pairs.size > VIEW_EDGES_PER_BOX * boxes.length) {
+      warn("VIEW_DENSE", `view draws ${pairs.size} relationships among ${boxes.length} boxes — prune or regroup (aim for <= ${VIEW_EDGES_PER_BOX * boxes.length})`, v.id ?? `__root_${v.axis}`);
+    }
   }
 
   return { errors, warnings };

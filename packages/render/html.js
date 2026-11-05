@@ -18,9 +18,9 @@ export function collectViews(model) {
 }
 
 // Two surface sets, one accent identity per kind — colour is renderer-owned geometry, never authored.
-const DARK = "--bg:#0d1219;--panel:#141b24;--box:#1a2230;--stroke:#2b3543;--ink:#e8eef5;--muted:#8b97a6;--edge:#46586b;--accent:#58a6ff;--shadow:0 1px 2px rgba(0,0,0,.45);"
+const DARK = "--bg:#0d1219;--panel:#141b24;--box:#1a2230;--stroke:#2b3543;--ink:#e8eef5;--muted:#8b97a6;--edge:#5a6d82;--accent:#58a6ff;--shadow:0 1px 2px rgba(0,0,0,.45);"
   + "--k-person:#e0a458;--k-system:#8b7cf0;--k-external:#6b7685;--k-container:#3fb6ac;--k-store:#56c08d;--k-tenant:#a06cd9;--k-component:#58a6ff;--k-cloud:#e0794b;--k-network:#d9a94e;--k-infra:#b56a52;--k-workload:#8fa05a;";
-const LIGHT = "--bg:#f6f8fc;--panel:#ffffff;--box:#ffffff;--stroke:#dce3ec;--ink:#1f2933;--muted:#5b6b7d;--edge:#9aa9ba;--accent:#2f7fd8;--shadow:0 1px 2px rgba(31,41,51,.12);"
+const LIGHT = "--bg:#f6f8fc;--panel:#ffffff;--box:#ffffff;--stroke:#dce3ec;--ink:#1f2933;--muted:#5b6b7d;--edge:#8a9aae;--accent:#2f7fd8;--shadow:0 1px 2px rgba(31,41,51,.12);"
   + "--k-person:#c4842c;--k-system:#6c5ce0;--k-external:#8a96a5;--k-container:#1f9b92;--k-store:#2f9e63;--k-tenant:#8a4fc0;--k-component:#2f7fd8;--k-cloud:#cf6a3a;--k-network:#bf8d2e;--k-infra:#9e5640;--k-workload:#6f8038;";
 
 // Per-kind rail fill + per-kind drillable border. These MUST come after the
@@ -48,13 +48,17 @@ header h1{font-size:15px;margin:0;font-weight:600}
 #legend{padding:0 16px 10px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:var(--muted);font-size:11px}
 #legend .lg{display:inline-flex;align-items:center;gap:5px}
 #legend .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-#canvas{flex:1;overflow:auto;padding:24px}
+#canvas{flex:1;overflow:auto;padding:24px;display:flex;align-items:flex-start}
 .view{display:none}
-.view.active{display:block}
+.view.active{display:block;margin:0 auto}
 svg.amview{max-width:100%;height:auto}
-.amedge{stroke:var(--edge);stroke-width:1.5}
+.amedge{stroke:var(--edge);stroke-width:1.5;fill:none}
+.amhit{stroke:transparent;stroke-width:10;fill:none;cursor:pointer;pointer-events:stroke}
+.amdrill rect{fill:var(--bg);stroke:var(--stroke)}.amdrill text{fill:var(--muted);font-size:11px;font-weight:600}
+.ambox.drillable:hover .amdrill rect{stroke:var(--accent)}
 /* Uncited edge: no code claims to realize it. Dashed, not red — an honest gap, not an error. */
 .amedge.uncited{stroke-dasharray:5 4;opacity:.7}
+.nocite .amedge.uncited{stroke-dasharray:none;opacity:1}
 .amview marker path{fill:var(--edge)}
 .amrect{fill:var(--box);stroke:var(--stroke);stroke-width:1.5;filter:drop-shadow(var(--shadow))}
 .amrail{stroke:none}
@@ -71,7 +75,7 @@ ${KIND_RULES}
 /* declutter: dense views hide labels until you hover a box (or toggle them all on) */
 .amlabel{transition:opacity .12s}
 .view.dense .amlabel{opacity:0}
-.amlabel.vis{opacity:1}
+.amlabel.vis,body.show-labels .view.dense .amlabel.vis{opacity:1}
 .amlabel.dim{opacity:0}
 body.show-labels .view.dense .amlabel{opacity:1}
 .amedge{transition:stroke .12s,opacity .12s}
@@ -85,6 +89,7 @@ body.show-labels .view.dense .amlabel{opacity:1}
 #panel .cite .ck{text-transform:uppercase;letter-spacing:.04em;font-size:10px}
 #panel .cite.uncited{font-style:italic;opacity:.75}
 #panel .cite .cn{margin-top:2px}
+#panel .via{color:var(--muted);font-size:11px}
 #panel{width:480px;background:var(--panel);border-left:1px solid var(--stroke);padding:16px;overflow:auto;display:none}
 #panel.open{display:block}
 #panel h2{font-size:15px;margin:0 0 4px}
@@ -129,7 +134,8 @@ function openPanel(id){
     h+='<div><code>'+esc(g.repo||'')+'</code></div><div><code>'+esc(g.path||'')+'</code></div>';
     if(g.symbol)h+='<div>symbol: <code>'+esc(g.symbol.fqn)+'</code> ('+esc(g.symbol.kind)+')</div>';
     if(g.iac)h+='<div>iac: <code>'+esc(g.iac)+'</code></div>';
-    if(g.region)h+='<div>region: '+g.region.anchors.map(esc).join(', ')+'<br><em>'+esc(g.region.note)+'</em></div>';
+    if(g.region){const an=(g.region.anchors||[]).map(a=>'<code>'+esc(typeof a==='string'?a:a.fqn)+'</code>');
+      h+='<div>region: '+(an.length?an.join(', '):'<em>no anchors yet</em>')+'<br><em>'+esc(g.region.note)+'</em></div>';}
     if(g.lines)h+='<div>lines: <code>'+esc(g.lines)+'</code></div>';
     h+='</section>';}
   if(d.mappings&&d.mappings.length){h+='<section><h3>Runs on</h3>';
@@ -137,7 +143,7 @@ function openPanel(id){
   if(d.links&&d.links.length){h+='<section><h3>Links</h3>';
     d.links.forEach(l=>{h+='<div><a href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label)+'</a></div>';});h+='</section>';}
   if(d.edges&&d.edges.length){h+='<section><h3>Relationships</h3>';
-    d.edges.forEach(r=>{h+='<div class="rel"><span class="dir">'+(r.dir==='out'?'→':'←')+'</span>'+(r.label?esc(r.label)+' ':'')+'<a href="#" data-go="'+esc(r.to)+'">'+esc(r.name)+'</a>';
+    d.edges.forEach(r=>{h+='<div class="rel"><span class="dir">'+(r.dir==='out'?'→':'←')+'</span>'+(r.label?esc(r.label)+' ':'')+'<a href="#" data-go="'+esc(r.to)+'">'+esc(r.name)+'</a>'+(r.via?' <span class="via">via '+esc(r.via)+'</span>':'');
       // The citation is authored data: where this relationship is claimed to be realized.
       if(r.ev){h+='<div class="cite"><span class="ck">'+esc(r.ev.kind)+'</span> <code>'+esc(r.ev.path)+'</code>';
         if(r.ev.anchors&&r.ev.anchors.length)h+=' '+r.ev.anchors.map(a=>'<code>'+esc(a.fqn)+'</code>').join(' ');
@@ -172,6 +178,20 @@ document.querySelectorAll('.ambox').forEach(g=>{
   g.addEventListener('mouseleave',()=>{const view=g.closest('.view');if(!view)return;
     view.querySelectorAll('.hot,.dim,.vis').forEach(el=>el.classList.remove('hot','dim','vis'));});
 });
+// Hover an edge: highlight just that edge, its label and its two ends.
+document.querySelectorAll('.amhit').forEach(h=>{
+  h.addEventListener('mouseenter',()=>{const view=h.closest('.view');const f=h.dataset.from,t=h.dataset.to;
+    const same=el=>el.dataset.from===f&&el.dataset.to===t;
+    view.querySelectorAll('.amedge').forEach(e=>{e.classList.toggle('hot',same(e));e.classList.toggle('dim',!same(e));});
+    view.querySelectorAll('.amlabel').forEach(l=>{l.classList.toggle('vis',same(l));l.classList.toggle('dim',!same(l));});
+    view.querySelectorAll('.ambox').forEach(b=>b.classList.toggle('dim',b.dataset.id!==f&&b.dataset.id!==t));});
+  h.addEventListener('mouseleave',()=>{const view=h.closest('.view');
+    view.querySelectorAll('.hot,.dim,.vis').forEach(el=>el.classList.remove('hot','dim','vis'));});
+  h.addEventListener('click',()=>openPanel(h.dataset.from));
+});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const p=document.getElementById('panel');
+  if(p.classList.contains('open')){p.classList.remove('open');return;}
+  const btns=document.querySelectorAll('#crumbs button');if(btns.length>1)btns[btns.length-2].click();});
 const lt=document.getElementById('lbltoggle');
 if(lt)lt.onclick=()=>{document.body.classList.toggle('show-labels');lt.classList.toggle('active');};
 // Theme: a stored choice wins via [data-theme]; otherwise the OS preference governs
@@ -187,6 +207,26 @@ if(tt)tt.onclick=()=>{const next=effTheme()==='light'?'dark':'light';document.do
   try{localStorage.setItem('archmap-theme',next)}catch(e){}paintThemeBtn();};
 show(D.rootDeploy && location.hash==='#deploy' ? D.rootDeploy : D.rootLogical);
 `;
+
+// A node's relationships include its descendants' edges that leave it — a container's
+// panel would otherwise be empty, since edges are authored leaf-to-leaf (§5.3).
+function relationshipsOf(model, id) {
+  const inside = new Set([id]);
+  for (const n of model.nodes) if (ancestorsOf(model, n.id).includes(id)) inside.add(n.id);
+  const rels = [];
+  for (const e of model.edges) {
+    const fi = inside.has(e.from), ti = inside.has(e.to);
+    if (fi === ti) continue;
+    const out = fi, here = out ? e.from : e.to, other = out ? e.to : e.from;
+    rels.push({
+      dir: out ? "out" : "in", to: other,
+      name: getNode(model, other)?.name ?? other, label: e.label,
+      via: here === id ? null : (getNode(model, here)?.name ?? here),
+      ev: e.evidence ?? null,
+    });
+  }
+  return rels;
+}
 
 export function render(model) {
   const views = collectViews(model);
@@ -205,14 +245,7 @@ export function render(model) {
       breadcrumb: ancestorsOf(model, n.id).slice().reverse(),
       mappings: model.mappings.filter((m) => m.logical === n.id)
         .map((m) => ({ to: m.deploy, label: m.label, name: getNode(model, m.deploy)?.name ?? m.deploy })),
-      edges: model.edges.filter((e) => e.from === n.id || e.to === n.id).map((e) => {
-        const out = e.from === n.id, other = out ? e.to : e.from;
-        return {
-          dir: out ? "out" : "in", to: other,
-          name: getNode(model, other)?.name ?? other, label: e.label,
-          ev: e.evidence ?? null,
-        };
-      }),
+      edges: relationshipsOf(model, n.id),
     };
   }
   const hasDeploy = model.nodes.some((n) => (n.axis ?? "logical") === "deploy");
@@ -229,10 +262,14 @@ export function render(model) {
   ).join("");
 
   // Only advertise the citation distinction when the model actually draws both kinds.
-  const anyUncited = model.edges.some((e) => !e.evidence);
-  const citeLegend = anyUncited
-    ? `<span class="lg"><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--edge)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>uncited edge</span>`
-    : "";
+  // When nothing is cited, dashing every line carries no information and costs legibility,
+  // so lines stay solid and the legend states the count instead.
+  const cited = model.edges.filter((e) => e.evidence).length;
+  const anyUncited = cited < model.edges.length;
+  const citeLegend = !anyUncited ? ""
+    : cited === 0
+      ? `<span class="lg cites">0 of ${model.edges.length} edges cited</span>`
+      : `<span class="lg"><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="var(--edge)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>uncited edge (${model.edges.length - cited} of ${model.edges.length})</span>`;
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -240,7 +277,7 @@ export function render(model) {
 <title>${esc(model.meta.name)} — archmap</title>
 <style>${STYLE}</style>
 <script>try{var t=localStorage.getItem('archmap-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script></head>
-<body>
+<body${cited === 0 ? ' class="nocite"' : ''}>
 <div id="main">
 <header><h1>${esc(model.meta.name)}</h1><span class="snapshot">v${esc(model.meta.version)} · ${esc(model.meta.snapshot)}</span>
 <span class="axis-toggle">${axisButtons}</span><button id="lbltoggle" class="lblbtn" title="Show all edge labels">Labels</button><button id="themetoggle" class="lblbtn" title="Toggle light / dark theme">◐</button></header>

@@ -97,3 +97,31 @@ test("render's legend lists exactly the present kinds, in canonical order", () =
   assert.ok(legend.indexOf("kind-person") < legend.indexOf("kind-container"));
   assert.ok(legend.indexOf("kind-container") < legend.indexOf("kind-component"));
 });
+
+const panelData = (html) => JSON.parse(html.match(/window\.__ARCHMAP__=(.*?);<\/script>/s)[1].replace(/\\u003c/g, "<"));
+
+test("a container's panel lists its descendants' outside relationships, with the inner end", () => {
+  const d = panelData(render(model()));
+  // `user -> h` is authored at the leaf; the api and sys panels must still show it
+  assert.deepEqual(d.panel.api.edges.map((r) => [r.dir, r.to, r.via]), [["in", "user", "Handler"]]);
+  assert.deepEqual(d.panel.sys.edges.map((r) => [r.dir, r.to, r.via]), [["in", "user", "Handler"]]);
+  assert.deepEqual(d.panel.h.edges.map((r) => [r.dir, r.to, r.via]), [["in", "user", null]]);
+});
+
+test("with no citations anywhere, lines stay solid and the legend states the count", () => {
+  const html = render(model());
+  assert.match(html, /<body class="nocite">/);
+  assert.match(html, /0 of 1 edges cited/);
+  const m = model();
+  m.edges.push({ from: "user", to: "sys", label: "x" });
+  m.edges[0].evidence = { kind: "doc", path: "spec.md", anchors: [], note: "n" };
+  const mixed = render(m);
+  assert.doesNotMatch(mixed, /class="nocite"/);
+  assert.match(mixed, /uncited edge \(1 of 2\)/);
+});
+
+test("drillable boxes carry a child-count badge and boxes carry a tooltip", () => {
+  const html = render(model());
+  assert.match(html, /class="amdrill"/);
+  assert.match(html, /<title>Handler — Handles requests\.<\/title>/);
+});
